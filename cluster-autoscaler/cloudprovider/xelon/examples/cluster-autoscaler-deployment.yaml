@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cluster-autoscaler
+  namespace: kube-system
+  labels:
+    app: cluster-autoscaler
+spec:
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app: cluster-autoscaler
+  template:
+    metadata:
+      labels:
+        app: cluster-autoscaler
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8085"
+    spec:
+      serviceAccountName: cluster-autoscaler
+      containers:
+        - name: cluster-autoscaler
+          image: pavelsgithub/cluster-autoscaler:dev
+          imagePullPolicy: Always
+          command:
+            - "./cluster-autoscaler"
+            - "--cloud-provider=xelon"
+            - "--skip-nodes-with-local-storage=false"
+            - "--skip-nodes-with-system-pods=false"
+            - "--stderrthreshold=info"
+            - "--v=5"
+          resources:
+            limits:
+              cpu: 100m
+              memory: 300Mi
+            requests:
+              cpu: 100m
+              memory: 300Mi
+          env:
+            - name: XELON_BASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: xelon-api-credentials
+                  key: baseUrl
+            - name: XELON_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: xelon-api-credentials
+                  key: clientId
+            - name: XELON_CLUSTER_POOL_ID
+              value: t64fp16ld1
+            - name: XELON_KUBERNETES_CLUSTER_ID
+              valueFrom:
+                secretKeyRef:
+                  name: xelon-api-credentials
+                  key: kubernetesClusterId
+            - name: XELON_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: xelon-api-credentials
+                  key: token
+
