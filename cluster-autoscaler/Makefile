@@ -56,6 +56,15 @@ test-build-tags:
 test-unit: clean build
 	go test --test.short -race ./... ${TAGS_FLAG}
 
+release-docker-dev:
+	@echo "==> Building docker image $(IMAGE_NAME)..."
+	GOOS=$(GOOS) docker buildx build --pull --platform linux/amd64 \
+		--build-arg "GOARCH=amd64" \
+		--tag xelonag/cluster-autoscaler-xelon:dev \
+		--file Dockerfile .
+	@echo "==> Releasing development docker image xelonag/cluster-autoscaler-xelon:dev..."
+	@docker push xelonag/cluster-autoscaler-xelon:dev
+
 dev-release: dev-release-arch-$(GOARCH)
 
 dev-release-arch-%: build-arch-% make-image-arch-% push-image-arch-%
