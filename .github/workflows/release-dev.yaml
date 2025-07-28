@@ -31,6 +31,7 @@ jobs:
       - name: Release development Docker image
         env:
           BUILD_TAGS: xelon
+          TAGS_FLAG: xelon
         run: |
           cd cluster-autoscaler
           make release-docker-dev
