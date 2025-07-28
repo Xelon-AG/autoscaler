@@ -61,6 +61,14 @@ dev-release: dev-release-arch-$(GOARCH)
 dev-release-arch-%: build-arch-% make-image-arch-% push-image-arch-%
 	@echo "Release ${TAG}${FOR_PROVIDER}-$* completed"
 
+release-docker-dev:
+	@echo "==> Building docker image xelonag/cluster-autoscaler-xelon:dev..."
+	@docker build \
+		--tag xelonag/cluster-autoscaler-xelon:dev \
+		--file Dockerfile .
+	@echo "==> Releasing development docker image xelonag/cluster-autoscaler-xelon:dev..."
+	@docker push xelonag/cluster-autoscaler-xelon:dev
+
 make-image: make-image-arch-$(GOARCH)
 
 make-image-arch-%:
