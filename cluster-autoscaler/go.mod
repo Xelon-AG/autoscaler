@@ -1,8 +1,8 @@
 module k8s.io/autoscaler/cluster-autoscaler
 
-go 1.25.0
+go 1.26.0
 
-godebug default=go1.25
+godebug default=go1.26
 
 require (
 	cloud.google.com/go/compute/metadata v0.7.0
@@ -17,6 +17,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.6.3
 	github.com/Azure/go-autorest/autorest v0.11.29
 	github.com/Azure/skewer/v2 v2.0.1
+	github.com/Xelon-AG/xelon-sdk-go v1.14.4
 	github.com/aws/aws-sdk-go-v2 v1.40.1
 	github.com/aws/aws-sdk-go-v2/config v1.32.3
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.15
@@ -29,7 +30,7 @@ require (
 	github.com/golang/mock v1.6.0
 	github.com/golang/protobuf v1.5.4
 	github.com/google/go-cmp v0.7.0
-	github.com/google/go-querystring v1.1.0
+	github.com/google/go-querystring v1.2.0
 	github.com/google/uuid v1.6.0
 	github.com/jmattheis/goverter v1.4.0
 	github.com/jmespath-community/go-jmespath v1.1.1
