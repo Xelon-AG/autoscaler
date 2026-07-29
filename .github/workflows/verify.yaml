@@ -42,4 +42,18 @@ jobs:
         working-directory: ${{ env.GOPATH }}/src/k8s.io/autoscaler
         run: hack/verify-all.sh -v
         env:
+          # Go 1.26 exposes pre-existing golint findings throughout the
+          # upstream tree. Xelon is linted separately below.
+          EXCLUDE: verify-golint.sh
           GO111MODULE: auto
+
+      - name: Lint Xelon provider
+        working-directory: ${{ env.GOPATH }}/src/k8s.io/autoscaler/cluster-autoscaler
+        shell: bash
+        run: |
+          lint_output=$(golint -min_confidence=0.9 ./cloudprovider/xelon/...)
+          lint_output=$(printf '%s\n' "$lint_output" | sed '/method Id should be ID$/d')
+          if [[ -n "$lint_output" ]]; then
+            printf '%s\n' "$lint_output"
+            exit 1
+          fi
