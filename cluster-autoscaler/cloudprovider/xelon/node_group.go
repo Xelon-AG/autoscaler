@@ -87,10 +87,13 @@ func newNodeGroup(client kubernetesService, clusterID, poolID string, minSize, m
 	}
 }
 
+// MaxSize returns the configured maximum size of the worker pool.
 func (group *NodeGroup) MaxSize() int { return group.maxSize }
 
+// MinSize returns the configured minimum size of the worker pool.
 func (group *NodeGroup) MinSize() int { return group.minSize }
 
+// TargetSize returns the current desired size reported by XKS.
 func (group *NodeGroup) TargetSize() (int, error) {
 	snapshot, err := group.fetchSnapshot(context.Background())
 	if err != nil {
@@ -99,6 +102,7 @@ func (group *NodeGroup) TargetSize() (int, error) {
 	return snapshot.publicTargetSize()
 }
 
+// IncreaseSize adds one worker to the pool and reconciles the mutation result.
 func (group *NodeGroup) IncreaseSize(delta int) error {
 	if delta != 1 {
 		return fmt.Errorf("Xelon v0 supports IncreaseSize delta 1 only, got %d", delta)
@@ -131,10 +135,12 @@ func (group *NodeGroup) IncreaseSize(delta int) error {
 	return group.reconcile(ctx, pending, mutationErr)
 }
 
+// AtomicIncreaseSize reports that atomic scale-up is unsupported.
 func (group *NodeGroup) AtomicIncreaseSize(int) error {
 	return cloudprovider.ErrNotImplemented
 }
 
+// DeleteNodes removes the single requested worker after verifying its identity.
 func (group *NodeGroup) DeleteNodes(nodes []*apiv1.Node) error {
 	if len(nodes) != 1 {
 		return fmt.Errorf("Xelon v0 supports deleting exactly one node, got %d", len(nodes))
@@ -179,20 +185,25 @@ func (group *NodeGroup) DeleteNodes(nodes []*apiv1.Node) error {
 	return group.reconcile(ctx, pending, mutationErr)
 }
 
+// ForceDeleteNodes reports that forced deletion is unsupported.
 func (group *NodeGroup) ForceDeleteNodes([]*apiv1.Node) error {
 	return cloudprovider.ErrNotImplemented
 }
 
+// DecreaseTargetSize reports that reducing the target without deleting a node is unsupported.
 func (group *NodeGroup) DecreaseTargetSize(int) error {
 	return cloudprovider.ErrNotImplemented
 }
 
+// Id returns the XKS worker pool identifier.
 func (group *NodeGroup) Id() string { return group.poolID }
 
+// Debug returns a concise description of the worker pool and its size bounds.
 func (group *NodeGroup) Debug() string {
 	return fmt.Sprintf("Xelon worker pool %s (min:%d max:%d)", group.poolID, group.minSize, group.maxSize)
 }
 
+// Nodes returns the instances currently represented in the XKS worker pool.
 func (group *NodeGroup) Nodes() ([]cloudprovider.Instance, error) {
 	snapshot, err := group.fetchSnapshot(context.Background())
 	if err != nil {
@@ -201,20 +212,26 @@ func (group *NodeGroup) Nodes() ([]cloudprovider.Instance, error) {
 	return snapshot.publicInstances()
 }
 
+// TemplateNodeInfo reports that scale-up from zero is unsupported.
 func (group *NodeGroup) TemplateNodeInfo() (*framework.NodeInfo, error) {
 	return nil, cloudprovider.ErrNotImplemented
 }
 
+// Exist reports that the explicitly configured worker pool exists.
 func (group *NodeGroup) Exist() bool { return true }
 
+// Create reports that node group autoprovisioning is unsupported.
 func (group *NodeGroup) Create() (cloudprovider.NodeGroup, error) {
 	return nil, cloudprovider.ErrNotImplemented
 }
 
+// Delete reports that node group autoprovisioning is unsupported.
 func (group *NodeGroup) Delete() error { return cloudprovider.ErrNotImplemented }
 
+// Autoprovisioned reports that the worker pool is statically configured.
 func (group *NodeGroup) Autoprovisioned() bool { return false }
 
+// GetOptions reports that per-node-group autoscaling options are unsupported.
 func (group *NodeGroup) GetOptions(config.NodeGroupAutoscalingOptions) (*config.NodeGroupAutoscalingOptions, error) {
 	return nil, cloudprovider.ErrNotImplemented
 }

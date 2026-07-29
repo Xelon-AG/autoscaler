@@ -37,12 +37,11 @@ import (
 
 var _ cloudprovider.CloudProvider = (*xelonCloudProvider)(nil)
 
-// BuildVersion and BuildRevision are set by the Xelon image build. They remain
-// variables so local builds can inject them with -ldflags -X.
-var (
-	BuildVersion  = "development"
-	BuildRevision = "unknown"
-)
+// BuildVersion is the Xelon image version injected at build time.
+var BuildVersion = "development"
+
+// BuildRevision is the source revision injected at build time.
+var BuildRevision = "unknown"
 
 type xelonCloudProvider struct {
 	nodeGroup       *NodeGroup
