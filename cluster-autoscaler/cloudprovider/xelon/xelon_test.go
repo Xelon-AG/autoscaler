@@ -20,6 +20,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"sync"
@@ -283,6 +285,65 @@ func TestReadConfig(t *testing.T) {
 		if _, err := readConfig(strings.NewReader(invalid)); err == nil {
 			t.Errorf("readConfig(%s) succeeded", invalid)
 		}
+	}
+}
+
+func TestReadConfigFromEnvironment(t *testing.T) {
+	values := map[string]string{
+		baseURLEnv:             "https://example.test/api/v2/",
+		clientIDEnv:            "client",
+		kubernetesClusterIDEnv: "cluster",
+		tokenEnv:               "token",
+	}
+	config, err := readConfigFromEnvironment(func(name string) string { return values[name] })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if config.BaseURL != values[baseURLEnv] || config.ClientID != values[clientIDEnv] || config.ClusterID != values[kubernetesClusterIDEnv] || config.Token != values[tokenEnv] {
+		t.Fatalf("environment config=%#v; want values from Xelon environment variables", config)
+	}
+
+	for _, name := range []string{baseURLEnv, clientIDEnv, kubernetesClusterIDEnv, tokenEnv} {
+		value := values[name]
+		delete(values, name)
+		if _, err := readConfigFromEnvironment(func(name string) string { return values[name] }); err == nil {
+			t.Errorf("environment config without %s succeeded", name)
+		}
+		values[name] = value
+	}
+}
+
+func TestLoadConfigFileIsAuthoritative(t *testing.T) {
+	configPath := filepath.Join(t.TempDir(), "cloud-config.json")
+	if err := os.WriteFile(configPath, []byte(`{"base_url":"https://file.test/api/v2/","token":"file-token","client_id":"file-client","cluster_id":"file-cluster"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	config, err := loadConfig(configPath, func(string) string {
+		t.Fatal("environment was read when --cloud-config was set")
+		return ""
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if config.Token != "file-token" || config.ClientID != "file-client" || config.ClusterID != "file-cluster" {
+		t.Fatalf("loadConfig=%#v; want file values", config)
+	}
+
+	environmentRead := false
+	validEnvironment := map[string]string{
+		baseURLEnv:             "https://environment.test/api/v2/",
+		clientIDEnv:            "environment-client",
+		kubernetesClusterIDEnv: "environment-cluster",
+		tokenEnv:               "environment-token",
+	}
+	if _, err := loadConfig(filepath.Join(t.TempDir(), "missing.json"), func(name string) string {
+		environmentRead = true
+		return validEnvironment[name]
+	}); err == nil {
+		t.Fatal("missing explicit cloud config silently fell back to environment")
+	}
+	if environmentRead {
+		t.Fatal("environment was read after an explicit cloud config failed")
 	}
 }
 

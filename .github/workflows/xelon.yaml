@@ -48,19 +48,19 @@ jobs:
           cache-dependency-path: cluster-autoscaler/go.sum
 
       - name: Test Xelon provider
-        run: go test ./cloudprovider/xelon/...
+        run: go test -tags xelon ./cloudprovider/xelon/...
 
       - name: Race test Xelon provider
-        run: go test -race ./cloudprovider/xelon/...
+        run: go test -race -tags xelon ./cloudprovider/xelon/...
 
       - name: Vet Xelon provider
-        run: go vet ./cloudprovider/xelon/...
+        run: go vet -tags xelon ./cloudprovider/xelon/...
 
       - name: Build Xelon binary
         run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags xelon -o "${RUNNER_TEMP}/cluster-autoscaler-xelon" .
 
-      - name: Parse deployment manifest
-        run: ruby -e 'require "yaml"; docs = YAML.load_stream(File.read(ARGV.fetch(0))); abort "empty YAML document" if docs.empty? || docs.any?(&:nil?)' cloudprovider/xelon/examples/cluster-autoscaler.yaml
+      - name: Validate deployment manifest schema
+        run: go run github.com/yannh/kubeconform/cmd/kubeconform@v0.7.0 -strict -summary -kubernetes-version 1.35.0 cloudprovider/xelon/examples/cluster-autoscaler.yaml
 
       - name: Build Xelon image
         run: docker build --file cloudprovider/xelon/Dockerfile --build-arg XELON_REVISION="${GITHUB_SHA}" --tag cluster-autoscaler-xelon:ci .

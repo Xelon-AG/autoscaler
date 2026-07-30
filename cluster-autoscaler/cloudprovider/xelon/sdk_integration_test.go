@@ -31,6 +31,11 @@ import (
 )
 
 func TestBuildXelonUsesModernKubernetesService(t *testing.T) {
+	t.Setenv(baseURLEnv, "https://environment-must-not-be-used.invalid/")
+	t.Setenv(clientIDEnv, "environment-client")
+	t.Setenv(kubernetesClusterIDEnv, "environment-cluster")
+	t.Setenv(tokenEnv, "environment-token")
+
 	var requests []string
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		requests = append(requests, request.Method+" "+request.URL.Path)
@@ -67,6 +72,39 @@ func TestBuildXelonUsesModernKubernetesService(t *testing.T) {
 	}
 	if len(requests) != 1 || requests[0] != "GET /kubernetes/cluster/pools/pool" {
 		t.Fatalf("requests=%v; want modern KubernetesService GetNodePool route", requests)
+	}
+}
+
+func TestBuildXelonUsesEnvironmentConfiguration(t *testing.T) {
+	var requests []string
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		requests = append(requests, request.Method+" "+request.URL.Path)
+		if request.Header.Get("Authorization") != "Bearer environment-token" {
+			t.Errorf("Authorization=%q", request.Header.Get("Authorization"))
+		}
+		if request.Header.Get("X-User-Id") != "environment-client" {
+			t.Errorf("X-User-Id=%q", request.Header.Get("X-User-Id"))
+		}
+		writer.Header().Set("Content-Type", "application/json")
+		_, _ = fmt.Fprint(writer, `{"identifier":"pool","nodes":[{"identifier":"worker","localvmid":"vm","status":"Deployed"}]}`)
+	}))
+	defer server.Close()
+
+	t.Setenv(baseURLEnv, server.URL+"/")
+	t.Setenv(clientIDEnv, "environment-client")
+	t.Setenv(kubernetesClusterIDEnv, "environment-cluster")
+	t.Setenv(tokenEnv, "environment-token")
+
+	opts := new(coreoptions.AutoscalerOptions)
+	provider, err := buildXelon(opts, cloudprovider.NodeGroupDiscoveryOptions{NodeGroupSpecs: []string{"1:3:pool"}}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if provider.Name() != cloudprovider.XelonProviderName {
+		t.Fatalf("provider name=%q", provider.Name())
+	}
+	if len(requests) != 1 || requests[0] != "GET /kubernetes/environment-cluster/pools/pool" {
+		t.Fatalf("requests=%v; want environment-configured KubernetesService request", requests)
 	}
 }
 

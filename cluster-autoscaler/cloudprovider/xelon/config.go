@@ -24,6 +24,13 @@ import (
 	"strings"
 )
 
+const (
+	baseURLEnv             = "XELON_BASE_URL"
+	clientIDEnv            = "XELON_CLIENT_ID"
+	kubernetesClusterIDEnv = "XELON_KUBERNETES_CLUSTER_ID"
+	tokenEnv               = "XELON_TOKEN"
+)
+
 // Config contains only XKS connection settings. Node group bounds and the
 // worker pool identifier are supplied through CA's --nodes flag.
 type Config struct {
@@ -46,6 +53,35 @@ func readConfig(reader io.Reader) (*Config, error) {
 	}
 	if err := ensureJSONEOF(decoder); err != nil {
 		return nil, err
+	}
+	if err := config.validate(); err != nil {
+		return nil, err
+	}
+	return config, nil
+}
+
+func readConfigFromEnvironment(getenv func(string) string) (*Config, error) {
+	if getenv == nil {
+		return nil, fmt.Errorf("Xelon environment configuration is required")
+	}
+	config := &Config{
+		BaseURL:   strings.TrimSpace(getenv(baseURLEnv)),
+		ClientID:  strings.TrimSpace(getenv(clientIDEnv)),
+		ClusterID: strings.TrimSpace(getenv(kubernetesClusterIDEnv)),
+		Token:     strings.TrimSpace(getenv(tokenEnv)),
+	}
+	for _, required := range []struct {
+		name  string
+		value string
+	}{
+		{name: baseURLEnv, value: config.BaseURL},
+		{name: clientIDEnv, value: config.ClientID},
+		{name: kubernetesClusterIDEnv, value: config.ClusterID},
+		{name: tokenEnv, value: config.Token},
+	} {
+		if strings.TrimSpace(required.value) == "" {
+			return nil, fmt.Errorf("%s is required when --cloud-config is not set", required.name)
+		}
 	}
 	if err := config.validate(); err != nil {
 		return nil, err
