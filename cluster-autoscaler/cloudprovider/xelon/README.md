@@ -72,6 +72,39 @@ docker image inspect \
 The expected upstream revision is
 `2d42588803c71fe9b35dcd9e3669ac6bb550ca22`.
 
+## Publish the image
+
+Pushing a tag matching `v*-xelon.*` runs
+`.github/workflows/xelon-image-publishing.yaml`. The workflow publishes a
+multi-platform `linux/amd64` and `linux/arm64` image to
+`xelonag/cluster-autoscaler-xelon:<tag>`.
+
+Release tags are immutable: the workflow stops if the Docker Hub tag already
+exists or if it cannot prove that the tag is unused. A successful run reports
+the multi-platform image digest in its job summary, signs that digest with
+Cosign using the workflow's GitHub OIDC identity, and publishes a provenance
+attestation for the same digest.
+
+The image labels record the tagged Xelon commit as
+`org.opencontainers.image.revision` and retain the pinned upstream version and
+revision in the `io.xelon.cluster-autoscaler.upstream.*` labels.
+
+Install [Cosign](https://docs.sigstore.dev/cosign/system_config/installation/),
+then verify a release by using the digest reported in the workflow's job
+summary. The certificate identity includes the exact release tag, so update
+both placeholders together:
+
+```bash
+cosign verify \
+  --certificate-identity "https://github.com/Xelon-AG/autoscaler/.github/workflows/xelon-image-publishing.yaml@refs/tags/v1.35.2-xelon.0" \
+  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+  "index.docker.io/xelonag/cluster-autoscaler-xelon@sha256:REPLACE_WITH_DIGEST"
+```
+
+A successful verification exits with status zero and prints the validated
+signature payload. Specifying the expected workflow identity and OIDC issuer is
+required; do not replace them with unrestricted regular expressions.
+
 ## Configure and deploy
 
 Copy `examples/cluster-autoscaler.yaml`, then replace:
