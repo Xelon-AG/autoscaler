@@ -16,6 +16,11 @@ The first demonstration is intentionally limited to `2 -> 3 -> 2`:
 - `Deleting`, `Changing resources`, `Error`, and unknown XKS worker states fail
   closed.
 
+## Maintenance and compatibility
+
+Before changing the upstream baseline or preparing a release, read the
+canonical [Xelon fork maintenance guide](../../../docs/upstream-maintenance.md).
+
 ## Worker and identity contracts
 
 | XKS state     | Count in `TargetSize` |                 Publish through `Nodes()` |

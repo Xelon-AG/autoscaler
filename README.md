@@ -4,6 +4,15 @@
 
 This repository contains autoscaling-related components for Kubernetes.
 
+## Xelon fork maintenance
+
+This repository is maintained as a small Xelon patch set on top of stable
+Kubernetes Cluster Autoscaler releases.
+
+See [`docs/upstream-maintenance.md`](docs/upstream-maintenance.md) before
+changing the upstream baseline, creating a release, or modifying
+`xelon/master`.
+
 ## What's inside
 
 [Cluster Autoscaler](https://github.com/kubernetes/autoscaler/tree/master/cluster-autoscaler) - a component that automatically adjusts the size of a Kubernetes
