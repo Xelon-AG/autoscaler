@@ -140,12 +140,7 @@ func buildXelon(opts *coreoptions.AutoscalerOptions, discovery cloudprovider.Nod
 		return nil, fmt.Errorf("parse Xelon --nodes entry: %w", err)
 	}
 
-	configReader, err := openCloudConfig(opts.CloudConfig)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = configReader.Close() }()
-	config, err := readConfig(configReader)
+	config, err := loadConfig(opts.CloudConfig, os.Getenv)
 	if err != nil {
 		return nil, err
 	}
@@ -168,9 +163,21 @@ func buildXelon(opts *coreoptions.AutoscalerOptions, discovery cloudprovider.Nod
 	return provider, nil
 }
 
+func loadConfig(path string, getenv func(string) string) (*Config, error) {
+	if path == "" {
+		return readConfigFromEnvironment(getenv)
+	}
+	configReader, err := openCloudConfig(path)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = configReader.Close() }()
+	return readConfig(configReader)
+}
+
 func openCloudConfig(path string) (io.ReadCloser, error) {
 	if path == "" {
-		return nil, fmt.Errorf("--cloud-config is required for Xelon")
+		return nil, fmt.Errorf("Xelon cloud config path is empty")
 	}
 	file, err := os.Open(path)
 	if err != nil {
