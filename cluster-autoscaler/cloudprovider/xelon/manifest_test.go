@@ -21,6 +21,7 @@ import (
 	"encoding/hex"
 	"io"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 
@@ -113,6 +114,17 @@ func assertV0Deployment(t *testing.T, deployment *appsv1.Deployment) {
 	if pod.ServiceAccountName != "xelon-cluster-autoscaler" {
 		t.Errorf("serviceAccountName=%q; want xelon-cluster-autoscaler", pod.ServiceAccountName)
 	}
+	if value, ok := pod.NodeSelector["node-role.kubernetes.io/control-plane"]; !ok || value != "" {
+		t.Errorf("nodeSelector=%v; want node-role.kubernetes.io/control-plane with an empty value", pod.NodeSelector)
+	}
+	wantControlPlaneToleration := corev1.Toleration{
+		Key:      "node-role.kubernetes.io/control-plane",
+		Operator: corev1.TolerationOpExists,
+		Effect:   corev1.TaintEffectNoSchedule,
+	}
+	if !containsToleration(pod.Tolerations, wantControlPlaneToleration) {
+		t.Errorf("tolerations=%v; want %v", pod.Tolerations, wantControlPlaneToleration)
+	}
 	if pod.PriorityClassName != "system-cluster-critical" {
 		t.Errorf("priorityClassName=%q; want system-cluster-critical", pod.PriorityClassName)
 	}
@@ -138,7 +150,7 @@ func assertV0Deployment(t *testing.T, deployment *appsv1.Deployment) {
 	if security == nil || security.ReadOnlyRootFilesystem == nil || !*security.ReadOnlyRootFilesystem {
 		t.Error("container must use a read-only root filesystem")
 	}
-	if security == nil || security.Capabilities == nil || !containsCapability(security.Capabilities.Drop, corev1.Capability("ALL")) {
+	if security == nil || security.Capabilities == nil || !containsCapability(security.Capabilities.Drop, "ALL") {
 		t.Error("container must drop all Linux capabilities")
 	}
 	assertXelonSecretEnvironment(t, container.Env)
@@ -266,19 +278,13 @@ func findEnv(environment []corev1.EnvVar, name string) (*corev1.EnvVar, bool) {
 }
 
 func containsString(values []string, want string) bool {
-	for _, value := range values {
-		if value == want {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(values, want)
 }
 
 func containsCapability(values []corev1.Capability, want corev1.Capability) bool {
-	for _, value := range values {
-		if value == want {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(values, want)
+}
+
+func containsToleration(values []corev1.Toleration, want corev1.Toleration) bool {
+	return slices.Contains(values, want)
 }
