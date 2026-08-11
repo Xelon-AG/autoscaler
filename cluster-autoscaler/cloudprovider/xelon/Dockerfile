@@ -18,7 +18,7 @@ WORKDIR /workspace
 COPY . .
 
 ARG TARGETARCH
-ARG XELON_VERSION=1.35.2-xelon.0
+ARG XELON_VERSION=1.35.2-xelon.1
 ARG XELON_REVISION
 
 RUN test -n "$XELON_REVISION" && \
@@ -29,7 +29,7 @@ RUN test -n "$XELON_REVISION" && \
 
 FROM gcr.io/distroless/static:nonroot
 
-ARG XELON_VERSION=1.35.2-xelon.0
+ARG XELON_VERSION=1.35.2-xelon.1
 ARG XELON_REVISION
 
 LABEL org.opencontainers.image.title="Xelon Cluster Autoscaler" \

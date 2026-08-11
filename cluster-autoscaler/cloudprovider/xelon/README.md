@@ -57,10 +57,10 @@ Run from `cluster-autoscaler/` on a committed Xelon revision:
 docker buildx build \
   --platform linux/amd64 \
   --load \
-  --build-arg XELON_VERSION=1.35.2-xelon.0 \
+  --build-arg XELON_VERSION=1.35.2-xelon.1 \
   --build-arg XELON_REVISION="$(git rev-parse HEAD)" \
   --file cloudprovider/xelon/Dockerfile \
-  --tag xelonag/cluster-autoscaler-xelon:v1.35.2-xelon.0 \
+  --tag xelonag/cluster-autoscaler-xelon:v1.35.2-xelon.1 \
   .
 ```
 
@@ -71,7 +71,7 @@ Verify the release, upstream CA version, and both source revisions:
 ```bash
 docker image inspect \
   --format '{{ index .Config.Labels "org.opencontainers.image.version" }} {{ index .Config.Labels "org.opencontainers.image.revision" }} {{ index .Config.Labels "io.xelon.cluster-autoscaler.upstream.version" }} {{ index .Config.Labels "io.xelon.cluster-autoscaler.upstream.revision" }}' \
-  xelonag/cluster-autoscaler-xelon:v1.35.2-xelon.0
+  xelonag/cluster-autoscaler-xelon:v1.35.2-xelon.1
 ```
 
 The expected upstream revision is
@@ -101,7 +101,7 @@ both placeholders together:
 
 ```bash
 cosign verify \
-  --certificate-identity "https://github.com/Xelon-AG/autoscaler/.github/workflows/xelon-image-publishing.yaml@refs/tags/v1.35.2-xelon.0" \
+  --certificate-identity "https://github.com/Xelon-AG/autoscaler/.github/workflows/xelon-image-publishing.yaml@refs/tags/v1.35.2-xelon.1" \
   --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
   "index.docker.io/xelonag/cluster-autoscaler-xelon@sha256:REPLACE_WITH_DIGEST"
 ```
@@ -221,6 +221,12 @@ tag is changed later. The manifest uses one replica for v0 and grants the
 standard Cluster Autoscaler Kubernetes permissions only; it grants no access
 to Secrets through the Kubernetes API and no Xelon-specific Kubernetes API
 permissions.
+
+The autoscaler is pinned outside the managed worker pool by selecting the XKS
+control-plane label `node-role.kubernetes.io/control-plane` and tolerating the
+matching `NoSchedule` taint. Both are present on XKS control-plane nodes. The
+selector prevents the pod from falling back to a worker, while the toleration
+allows it onto the otherwise protected control plane.
 
 The deployment must retain all four v0 safety flags:
 

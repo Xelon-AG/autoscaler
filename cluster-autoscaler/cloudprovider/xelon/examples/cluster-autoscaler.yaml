@@ -125,6 +125,12 @@ spec:
     spec:
       priorityClassName: system-cluster-critical
       serviceAccountName: xelon-cluster-autoscaler
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: ""
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
       securityContext:
         runAsNonRoot: true
         runAsUser: 65532
@@ -134,7 +140,7 @@ spec:
       containers:
         - name: cluster-autoscaler
           # Replace the digest with the value reported by the release workflow.
-          image: xelonag/cluster-autoscaler-xelon:v1.35.2-xelon.0@sha256:REPLACE_WITH_RELEASE_DIGEST
+          image: xelonag/cluster-autoscaler-xelon:v1.35.2-xelon.1@sha256:REPLACE_WITH_RELEASE_DIGEST
           imagePullPolicy: IfNotPresent
           args:
             - --cloud-provider=xelon
