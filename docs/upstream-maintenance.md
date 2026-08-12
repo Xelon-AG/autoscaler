@@ -333,6 +333,7 @@ Every release must verify:
 - a Docker image build;
 - multi-platform image publishing for `linux/amd64` and `linux/arm64`;
 - provenance labels containing both the upstream and Xelon revisions;
+- that the deployment manifest image tag exactly matches the Git release tag;
 - that there are no unexplained downstream files;
 - that the release tag and image are immutable.
 
@@ -359,7 +360,7 @@ Retain enough test evidence to connect the exact source revision, image digest,
 XKS worker transitions, Kubernetes node registration, selected scale-down
 node, and final healthy state.
 
-## Release-image publishing
+## Release artifacts
 
 Pull requests may validate Docker builds, but they must not publish images.
 Official images are published only from controlled release tags. The Docker
@@ -387,8 +388,21 @@ Go version
 container image digest
 ```
 
-The recorded digest is the deployment identity. Never rebuild or replace an
-existing release image under the same tag.
+The deployment manifest is also part of the release contract at the stable
+repository path
+`cluster-autoscaler/cloudprovider/xelon/examples/cluster-autoscaler.yaml`.
+Before creating a release tag, its image reference must use that exact release
+tag. Customers can then pin the manifest through:
+
+```text
+https://raw.githubusercontent.com/Xelon-AG/autoscaler/<release-tag>/cluster-autoscaler/cloudprovider/xelon/examples/cluster-autoscaler.yaml
+```
+
+The recorded digest is the release image's verifiable identity. The tagged
+manifest intentionally uses the immutable release image tag to avoid a
+circular dependency between the Git commit/tag and the image digest. Never
+rebuild or replace an existing release image under the same tag, and never
+move or recreate the corresponding Git tag.
 
 ## Initial rewrite promotion
 
