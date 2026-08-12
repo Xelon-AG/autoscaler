@@ -139,8 +139,8 @@ spec:
           type: RuntimeDefault
       containers:
         - name: cluster-autoscaler
-          # Replace the digest with the value reported by the release workflow.
-          image: xelonag/cluster-autoscaler-xelon:v1.35.2-xelon.1@sha256:REPLACE_WITH_RELEASE_DIGEST
+          # Published release image tags are immutable and match Git release tags.
+          image: xelonag/cluster-autoscaler-xelon:v1.35.2-xelon.2
           imagePullPolicy: IfNotPresent
           args:
             - --cloud-provider=xelon

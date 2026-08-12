@@ -18,7 +18,6 @@ package xelon
 
 import (
 	"bytes"
-	"encoding/hex"
 	"io"
 	"os"
 	"slices"
@@ -139,7 +138,7 @@ func assertV0Deployment(t *testing.T, deployment *appsv1.Deployment) {
 	if !ok {
 		t.Fatal("Deployment has no cluster-autoscaler container")
 	}
-	assertImmutableImage(t, container.Image)
+	assertReleaseImage(t, container.Image)
 	if container.Resources.Requests.Cpu().IsZero() || container.Resources.Requests.Memory().IsZero() {
 		t.Error("container must have non-zero CPU and memory requests")
 	}
@@ -205,39 +204,11 @@ func assertXelonSecretEnvironment(t *testing.T, environment []corev1.EnvVar) {
 	}
 }
 
-func assertImmutableImage(t *testing.T, image string) {
+func assertReleaseImage(t *testing.T, image string) {
 	t.Helper()
-	const repository = "xelonag/cluster-autoscaler-xelon:"
-	if !strings.HasPrefix(image, repository) {
-		t.Errorf("unexpected image repository %q", image)
-		return
-	}
-
-	parts := strings.Split(image, "@sha256:")
-	if len(parts) != 2 || parts[1] == "" {
-		t.Errorf("image %q is not pinned by a sha256 digest", image)
-		return
-	}
-	tag := strings.TrimPrefix(parts[0], repository)
-	if tag == "" || tag == "latest" {
-		t.Errorf("image %q must use an explicit non-latest tag", image)
-	}
-
-	digest := parts[1]
-	if digest == "REPLACE_WITH_RELEASE_DIGEST" {
-		documentation, err := os.ReadFile("README.md")
-		if err != nil {
-			t.Errorf("read manifest documentation: %v", err)
-			return
-		}
-		if !bytes.Contains(documentation, []byte("REPLACE_WITH_RELEASE_DIGEST")) {
-			t.Error("release digest placeholder is not documented in README.md")
-		}
-		return
-	}
-	decoded, err := hex.DecodeString(digest)
-	if err != nil || len(decoded) != 32 {
-		t.Errorf("image %q has an invalid sha256 digest", image)
+	const want = "xelonag/cluster-autoscaler-xelon:v1.35.2-xelon.2"
+	if image != want {
+		t.Errorf("image=%q; want release image %q", image, want)
 	}
 }
 

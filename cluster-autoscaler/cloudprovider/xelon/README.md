@@ -57,10 +57,10 @@ Run from `cluster-autoscaler/` on a committed Xelon revision:
 docker buildx build \
   --platform linux/amd64 \
   --load \
-  --build-arg XELON_VERSION=1.35.2-xelon.1 \
+  --build-arg XELON_VERSION=1.35.2-xelon.2 \
   --build-arg XELON_REVISION="$(git rev-parse HEAD)" \
   --file cloudprovider/xelon/Dockerfile \
-  --tag xelonag/cluster-autoscaler-xelon:v1.35.2-xelon.1 \
+  --tag xelonag/cluster-autoscaler-xelon:v1.35.2-xelon.2 \
   .
 ```
 
@@ -71,7 +71,7 @@ Verify the release, upstream CA version, and both source revisions:
 ```bash
 docker image inspect \
   --format '{{ index .Config.Labels "org.opencontainers.image.version" }} {{ index .Config.Labels "org.opencontainers.image.revision" }} {{ index .Config.Labels "io.xelon.cluster-autoscaler.upstream.version" }} {{ index .Config.Labels "io.xelon.cluster-autoscaler.upstream.revision" }}' \
-  xelonag/cluster-autoscaler-xelon:v1.35.2-xelon.1
+  xelonag/cluster-autoscaler-xelon:v1.35.2-xelon.2
 ```
 
 The expected upstream revision is
@@ -96,12 +96,12 @@ revision in the `io.xelon.cluster-autoscaler.upstream.*` labels.
 
 Install [Cosign](https://docs.sigstore.dev/cosign/system_config/installation/),
 then verify a release by using the digest reported in the workflow's job
-summary. The certificate identity includes the exact release tag, so update
-both placeholders together:
+summary. The certificate identity includes the exact release tag, so for a
+different release update both the tag and digest together:
 
 ```bash
 cosign verify \
-  --certificate-identity "https://github.com/Xelon-AG/autoscaler/.github/workflows/xelon-image-publishing.yaml@refs/tags/v1.35.2-xelon.1" \
+  --certificate-identity "https://github.com/Xelon-AG/autoscaler/.github/workflows/xelon-image-publishing.yaml@refs/tags/v1.35.2-xelon.2" \
   --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
   "index.docker.io/xelonag/cluster-autoscaler-xelon@sha256:REPLACE_WITH_DIGEST"
 ```
@@ -209,18 +209,40 @@ invalid file stops startup; the provider never fills missing file fields from
 environment variables. When the argument is absent, all configuration comes
 from the environment.
 
-Copy `examples/cluster-autoscaler.yaml`, then replace:
+The release manifest has the stable repository path
+`cluster-autoscaler/cloudprovider/xelon/examples/cluster-autoscaler.yaml`.
+After the release tag is created, pin the manifest directly with this URL:
 
-- `REPLACE_XKS_POOL_ID`;
-- `REPLACE_WITH_RELEASE_DIGEST` with the `sha256` digest reported by the
-  release workflow.
+```text
+https://raw.githubusercontent.com/Xelon-AG/autoscaler/v1.35.2-xelon.2/cluster-autoscaler/cloudprovider/xelon/examples/cluster-autoscaler.yaml
+```
 
-Keep the version tag and digest together in the image reference. Kubernetes
-pulls by digest, so the deployed release remains immutable even if a registry
-tag is changed later. The manifest uses one replica for v0 and grants the
-standard Cluster Autoscaler Kubernetes permissions only; it grants no access
-to Secrets through the Kubernetes API and no Xelon-specific Kubernetes API
-permissions.
+For example, a Kustomize overlay can use the tagged manifest as a remote
+resource:
+
+```yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - https://raw.githubusercontent.com/Xelon-AG/autoscaler/v1.35.2-xelon.2/cluster-autoscaler/cloudprovider/xelon/examples/cluster-autoscaler.yaml
+```
+
+Patch the pool argument in the overlay, or download the tagged manifest, then
+replace:
+
+- `REPLACE_XKS_POOL_ID`.
+
+The manifest image reference uses the matching release tag
+`xelonag/cluster-autoscaler-xelon:v1.35.2-xelon.2`. Published release image tags
+are immutable. Using the tag avoids a circular dependency between the Git
+commit/tag and the image digest; the release workflow still reports, signs,
+and attests the resulting digest. Do not use the moving `xelon/master` branch
+for production deployment manifests.
+
+The manifest uses one replica for v0 and grants the standard Cluster
+Autoscaler Kubernetes permissions only; it grants no access to Secrets through
+the Kubernetes API and no Xelon-specific Kubernetes API permissions.
 
 The autoscaler is pinned outside the managed worker pool by selecting the XKS
 control-plane label `node-role.kubernetes.io/control-plane` and tolerating the
@@ -265,11 +287,10 @@ kubectl -n kube-system rollout undo deployment/xelon-cluster-autoscaler
 kubectl -n kube-system rollout status deployment/xelon-cluster-autoscaler
 ```
 
-Also restore `REPLACE_WITH_RELEASE_DIGEST` in your saved manifest to the prior
-known-good digest; otherwise a later `kubectl apply` will deploy the newer
-image again. If RBAC, arguments, the pool ID, or other manifest fields changed,
-reapply the complete previously reviewed manifest instead of relying only on
-`rollout undo`.
+Also restore the prior release image tag in your saved manifest; otherwise a
+later `kubectl apply` will deploy the newer image again. If RBAC, arguments,
+the pool ID, or other manifest fields changed, reapply the complete previously
+reviewed tag-pinned manifest instead of relying only on `rollout undo`.
 
 To roll back shared credentials or Xelon configuration, restore the previous
 `xelon-api-credentials` values through the XKS or CCM process that owns the
