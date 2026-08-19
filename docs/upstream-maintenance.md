@@ -65,6 +65,12 @@ v1.35.2-xelon.2
 
 Release tags are immutable. Never move, recreate, or overwrite a release tag.
 
+Once a Xelon release has been published from a branch, that published branch
+history is append-only. Never rebase or force-push a published active or
+maintenance line. Continue maintenance through normal commits and merges so
+existing release tags, source commits, images, signatures, and provenance keep
+a stable relationship.
+
 ## Kubernetes and Cluster Autoscaler compatibility
 
 The Cluster Autoscaler minor version should match the Kubernetes minor
@@ -87,11 +93,13 @@ After the rewrite is promoted, `xelon/master` is the active Xelon development
 branch. It is protected: direct pushes are not allowed, and changes are
 reviewed through pull requests.
 
-### `release/xelon-<minor>`
+### `xelon/release-<minor>`
 
-A branch such as `release/xelon-1.35` maintains an older supported minor. It is
+A branch such as `xelon/release-1.35` maintains an older supported minor. It is
 created when active development moves to the next Kubernetes and Cluster
-Autoscaler minor.
+Autoscaler minor. Stable upstream patch releases are merged into the branch
+that owns that Kubernetes minor: `xelon/master` while the minor is active, or
+the corresponding maintenance branch after active development has moved on.
 
 ### `legacy/xelon-master`
 
@@ -171,8 +179,16 @@ current upstream baseline. Stop and investigate any unexpected ancestry.
 
 ### 5. Create a synchronization branch
 
+Create the synchronization branch from the branch that owns the Kubernetes
+minor. For `1.35`, that is `xelon/master` while `1.35` is active and
+`xelon/release-1.35` after active development has moved to a newer minor.
+
 ```bash
-git switch --create sync/ca-1.35.3 origin/xelon/master
+target_branch=xelon/master
+# If 1.35 is already a maintenance line:
+# target_branch=xelon/release-1.35
+
+git switch --create sync/ca-1.35.3 "origin/$target_branch"
 ```
 
 ### 6. Merge the exact upstream release
@@ -226,12 +242,15 @@ git commit \
 git push -u origin sync/ca-1.35.3
 ```
 
-Open the pull request in this direction:
+Open the pull request back to the same branch that owns the Kubernetes minor:
 
 ```text
-base:    xelon/master
+base:    <target branch for Kubernetes 1.35>
 compare: sync/ca-1.35.3
 ```
+
+For example, the base is `xelon/master` while `1.35` is active and
+`xelon/release-1.35` after it becomes a maintenance line.
 
 The review must cover both conflict resolutions and the complete downstream
 delta from the new upstream tag.
@@ -253,26 +272,37 @@ routine same-minor merge.
 ### 1. Preserve the previous line
 
 ```bash
-git branch release/xelon-1.35 xelon/master
-git push origin release/xelon-1.35
+git branch xelon/release-1.35 xelon/master
+git push origin xelon/release-1.35
 ```
 
 Protect the maintenance branch according to the repository policy.
 
-### 2. Establish a clean stable upstream baseline
+### 2. Select and verify the exact stable upstream release
 
-Start the new active line from an exact, stable upstream
-`cluster-autoscaler-1.36.x` tag. Verify and peel the tag as described in the
-same-minor runbook. Do not use `master`, a prerelease, or another moving ref.
+Select an exact, stable upstream `cluster-autoscaler-1.36.x` tag. Verify and
+peel the tag as described in the same-minor runbook. Do not use `master`, a
+prerelease, or another moving ref.
 
-### 3. Do not merge the complete previous-minor fork history
+### 3. Merge the exact upstream release into the active line
 
-The new minor must not inherit old downstream divergence through a merge of
-the complete `1.35` fork. Use the clean upstream release as the baseline.
+Preserve the published Xelon history. Create a focused synchronization branch
+from `xelon/master`, then merge the peeled upstream release commit:
 
-### 4. Replay the small Xelon patch set
+```bash
+git switch --create sync/ca-1.36.x origin/xelon/master
+git merge --no-ff --no-commit 'cluster-autoscaler-1.36.x^{commit}'
+```
 
-Replay and review only the pieces required for the Xelon distribution:
+Resolve only genuine downstream conflicts, run the required verification, then
+commit and open a pull request back to `xelon/master`. Do not rebase,
+force-push, or replace the published `xelon/master` history.
+
+### 4. Review the Xelon delta against the new upstream baseline
+
+Review the resulting tree against the selected upstream release. The remaining
+downstream differences should still be limited to the pieces required for the
+Xelon distribution:
 
 - Xelon cloud provider;
 - provider and binary wiring;
@@ -283,8 +313,9 @@ Replay and review only the pieces required for the Xelon distribution:
 - required SDK and Go toolchain changes;
 - maintenance documentation.
 
-Preserve useful commit attribution where practical and keep the replay easy to
-audit against the clean upstream baseline.
+Every remaining difference must be explainable. The new minor update is a
+compatibility operation, not an opportunity to replay, reorder, or rewrite
+already-published Xelon history.
 
 ### 5. Adapt to upstream changes
 
@@ -320,6 +351,26 @@ Use a focused feature or fix branch, open a pull request, run normal CI, and
 complete release verification. The release must not silently include an
 unreviewed upstream baseline change. Verify that the recorded upstream version
 and commit remain unchanged.
+
+### Forward-porting Xelon fixes
+
+When a Xelon fix affects more than one supported Kubernetes minor, implement it
+on the oldest affected supported line first. Then forward-port the logical fix
+to each newer supported line with `git cherry-pick` or an equivalent adapted
+commit when upstream differences require changes.
+
+Validate the fix independently on every target line. Do not merge an entire
+older maintenance branch into a newer Kubernetes minor just to propagate a
+Xelon fix; older branches also contain minor-specific upstream history and
+release metadata that do not belong on newer lines.
+
+Upstream patch updates and Xelon fix propagation are separate flows:
+
+```text
+upstream 1.35.x patch → xelon/release-1.35
+
+Xelon fix on 1.35 → cherry-pick/adapt → 1.36 → newer supported lines
+```
 
 ## Release gates
 
@@ -365,7 +416,8 @@ node, and final healthy state.
 Pull requests may validate Docker builds, but they must not publish images.
 Official images are published only from controlled release tags. The Docker
 image tag must exactly match the Git release tag, and the final image digest
-must be recorded in the GitHub Release. Release images are immutable.
+must be retained as release verification evidence. Release images are
+immutable.
 
 Example:
 
@@ -451,6 +503,7 @@ copying part of the process into a separate checklist that can drift.
 - Push directly to `xelon/master`.
 - Use `legacy/xelon-master` for new work.
 - Base production releases on upstream `master`.
+- Rebase or force-push a published active or maintenance line.
 - Overwrite release tags.
 - Mix unrelated upstream cleanup into Xelon changes.
 - Publish release images from arbitrary branches or pull requests.
