@@ -1129,10 +1129,27 @@ func (csr *ClusterStateRegistry) GetUpcomingNodes() (upcomingCounts map[string]i
 		// failure or timeout) or are backed off. Otherwise, fake upcoming nodes
 		// injected into the cluster snapshot will make unschedulable pods appear
 		// schedulable, preventing ScaleUp from ever being called and considering
-		// alternative node groups.
+		// alternative node groups. Node groups that can identify actively creating
+		// capacity from authoritative provider state may opt into the narrow
+		// fallback below.
 		if _, hasScaleUpRequest := csr.scaleUpRequests[id]; !hasScaleUpRequest {
-			klog.V(4).Infof("Skipping %d upcoming nodes for node group %s: no active scale-up request", newNodes, id)
-			continue
+			providerConfirmedNodeGroup, supported := nodeGroup.(cloudprovider.NodeGroupWithProviderConfirmedUpcomingNodes)
+			if !supported {
+				klog.V(4).Infof("Skipping %d upcoming nodes for node group %s: no active scale-up request", newNodes, id)
+				continue
+			}
+			providerConfirmed, err := providerConfirmedNodeGroup.ProviderConfirmedUpcomingNodes()
+			if err != nil {
+				klog.Warningf("Skipping %d upcoming nodes for node group %s: failed to get provider-confirmed upcoming nodes: %v", newNodes, id, err)
+				continue
+			}
+			if providerConfirmed <= 0 {
+				klog.V(4).Infof("Skipping %d upcoming nodes for node group %s: provider confirmed no upcoming nodes", newNodes, id)
+				continue
+			}
+			if providerConfirmed < newNodes {
+				newNodes = providerConfirmed
+			}
 		}
 		if backoffStatus := csr.BackoffStatusForNodeGroup(nodeGroup, time.Now()); backoffStatus.IsBackedOff {
 			klog.V(4).Infof("Skipping %d upcoming nodes for backed-off node group %s: %s", newNodes, id, backoffStatus.ErrorInfo.ErrorMessage)

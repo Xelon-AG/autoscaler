@@ -1961,6 +1961,81 @@ func TestGetUpcomingNodesSkipsWithoutScaleUpRequestOrBackoff(t *testing.T) {
 	})
 }
 
+type providerConfirmedUpcomingNodeGroup struct {
+	cloudprovider.NodeGroup
+	upcoming int
+	err      error
+}
+
+func (ng *providerConfirmedUpcomingNodeGroup) ProviderConfirmedUpcomingNodes() (int, error) {
+	return ng.upcoming, ng.err
+}
+
+func TestGetUpcomingNodesUsesProviderConfirmedCapacityWithoutScaleUpRequest(t *testing.T) {
+	now := time.Now()
+	tests := []struct {
+		name      string
+		confirmed int
+		err       error
+		request   bool
+		backedOff bool
+		want      int
+	}{
+		{name: "uses provider-confirmed capacity", confirmed: 1, want: 1},
+		{name: "caps provider count to target gap", confirmed: 3, want: 2},
+		{name: "zero does not expose an unexplained gap", confirmed: 0, want: 0},
+		{name: "negative does not expose an unexplained gap", confirmed: -1, want: 0},
+		{name: "provider error fails closed", err: fmt.Errorf("backend unavailable"), want: 0},
+		{name: "active request retains ordinary behavior", err: fmt.Errorf("must not be called"), request: true, want: 2},
+		{name: "backoff still suppresses provider-confirmed capacity", confirmed: 2, backedOff: true, want: 0},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			node := BuildTestNode("ng1-1", 1000, 1000)
+			SetNodeReadyState(node, true, now.Add(-time.Minute))
+
+			provider := testprovider.NewTestCloudProviderBuilder().Build()
+			baseNodeGroup := provider.BuildNodeGroup("ng1", 1, 10, 3, true, false, "", nil)
+			nodeGroup := &providerConfirmedUpcomingNodeGroup{
+				NodeGroup: baseNodeGroup,
+				upcoming:  test.confirmed,
+				err:       test.err,
+			}
+			provider.InsertNodeGroup(nodeGroup)
+			provider.AddNode("ng1", node)
+
+			fakeClient := &fake.Clientset{}
+			fakeLogRecorder, err := utils.NewStatusMapRecorder(fakeClient, "kube-system",
+				kube_record.NewFakeRecorder(5), false, "configmap-provider-confirmed")
+			assert.NoError(t, err)
+			nodeInfo := framework.NewNodeInfo(node, nil)
+			templateRegistry := newMockTemplateNodeInfoRegistry(map[string]*framework.NodeInfo{"ng1": nodeInfo})
+			scaleUpBackoff := newBackoff()
+			clusterstate := NewClusterStateRegistry(provider, fakeLogRecorder, scaleUpBackoff,
+				nodegroupconfig.NewDefaultNodeGroupConfigProcessor(
+					config.NodeGroupAutoscalingOptions{MaxNodeProvisionTime: 15 * time.Minute}),
+				templateRegistry, WithConfig(ClusterStateRegistryConfig{
+					MaxTotalUnreadyPercentage: 10,
+					OkTotalUnreadyCount:       1,
+				}))
+
+			assert.NoError(t, clusterstate.UpdateNodes([]*apiv1.Node{node}, now))
+			if test.request {
+				clusterstate.RegisterScaleUp(nodeGroup, 2, now)
+			}
+			if test.backedOff {
+				scaleUpBackoff.Backoff(nodeGroup, nodeInfo, cloudprovider.InstanceErrorInfo{
+					ErrorClass:   cloudprovider.OtherErrorClass,
+					ErrorMessage: "test backoff",
+				}, now)
+			}
+			upcomingNodes, _ := clusterstate.GetUpcomingNodes()
+			assert.Equal(t, test.want, upcomingNodes["ng1"])
+		})
+	}
+}
+
 type mockMetrics struct {
 	mock.Mock
 }

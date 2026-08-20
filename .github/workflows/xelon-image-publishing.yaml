@@ -1,0 +1,106 @@
+name: Publish Xelon image
+
+on:
+  push:
+    tags:
+      - 'v*-xelon.*'
+
+permissions:
+  contents: read
+  attestations: write
+  id-token: write
+  packages: write
+
+env:
+  IMAGE_NAME: xelonag/cluster-autoscaler-xelon
+
+concurrency:
+  group: xelon-image-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Build and publish image
+    runs-on: ubuntu-latest
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - name: Checkout tagged revision
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Resolve release metadata
+        id: release
+        shell: bash
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          if [[ ! "${tag}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-xelon\.[0-9]+$ ]]; then
+            echo "::error title=Invalid release tag::${tag} does not match v<major>.<minor>.<patch>-xelon.<revision>"
+            exit 1
+          fi
+          version="${tag#v}"
+          echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      - name: Ensure release tag is immutable
+        shell: bash
+        env:
+          IMAGE: ${{ env.IMAGE_NAME }}:${{ steps.release.outputs.tag }}
+        run: |
+          if inspect_output=$(docker buildx imagetools inspect "${IMAGE}" 2>&1); then
+            echo "::error title=Release tag already exists::Refusing to overwrite ${IMAGE}"
+            exit 1
+          fi
+
+          if ! grep -Eqi 'not found|manifest unknown' <<< "${inspect_output}"; then
+            printf '%s\n' "${inspect_output}"
+            echo "::error title=Registry check failed::Could not prove that ${IMAGE} is unused"
+            exit 1
+          fi
+
+      - name: Build and push image
+        id: build
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        with:
+          context: cluster-autoscaler
+          file: cluster-autoscaler/cloudprovider/xelon/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ env.IMAGE_NAME }}:${{ steps.release.outputs.tag }}
+          build-args: |
+            XELON_VERSION=${{ steps.release.outputs.version }}
+            XELON_REVISION=${{ github.sha }}
+
+      - name: Sign image with GitHub OIDC
+        env:
+          IMAGE: index.docker.io/${{ env.IMAGE_NAME }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: cosign sign --yes "${IMAGE}@${DIGEST}"
+
+      - name: Attest image provenance
+        uses: actions/attest@c32b4b8b198b65d0bd9d63490e847ff7b53989d4 # v4.0.0
+        with:
+          subject-name: index.docker.io/${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+
+      - name: Publish image digest
+        env:
+          IMAGE: ${{ env.IMAGE_NAME }}:${{ steps.release.outputs.tag }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          echo "### Published Xelon image" >> "${GITHUB_STEP_SUMMARY}"
+          echo '```text' >> "${GITHUB_STEP_SUMMARY}"
+          echo "${IMAGE}@${DIGEST}" >> "${GITHUB_STEP_SUMMARY}"
+          echo '```' >> "${GITHUB_STEP_SUMMARY}"

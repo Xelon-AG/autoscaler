@@ -94,6 +94,8 @@ const (
 	RancherProviderName = "rancher"
 	// UthoProviderName gets the provider name of utho
 	UthoProviderName = "utho"
+	// XelonProviderName gets the provider name of Xelon.
+	XelonProviderName = "xelon"
 )
 
 // GpuConfig contains the label, type and the resource name for a GPU.
@@ -259,6 +261,18 @@ type NodeGroup interface {
 	// NodeGroup. Returning a nil will result in using default options.
 	// Implementation optional. Callers MUST handle `cloudprovider.ErrNotImplemented`.
 	GetOptions(defaults config.NodeGroupAutoscalingOptions) (*config.NodeGroupAutoscalingOptions, error)
+}
+
+// NodeGroupWithProviderConfirmedUpcomingNodes is an optional extension for node
+// groups that can identify actively creating capacity from authoritative
+// provider state. The returned count must not be inferred solely from a target
+// size gap.
+type NodeGroupWithProviderConfirmedUpcomingNodes interface {
+	NodeGroup
+
+	// ProviderConfirmedUpcomingNodes returns the number of nodes whose creation
+	// has been accepted and is still in progress according to the provider.
+	ProviderConfirmedUpcomingNodes() (int, error)
 }
 
 // Instance represents a cloud-provider node. The node does not necessarily map to k8s node

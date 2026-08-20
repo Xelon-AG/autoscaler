@@ -1,0 +1,66 @@
+name: Xelon Provider
+
+on:
+  push:
+    paths:
+      - '.github/workflows/ca-test.yaml'
+      - '.github/workflows/verify.yaml'
+      - '.github/workflows/xelon.yaml'
+      - 'builder/Dockerfile'
+      - 'cluster-autoscaler/Dockerfile'
+      - 'cluster-autoscaler/cloudprovider/builder/builder_all.go'
+      - 'cluster-autoscaler/cloudprovider/builder/builder_xelon.go'
+      - 'cluster-autoscaler/cloudprovider/cloud_provider.go'
+      - 'cluster-autoscaler/cloudprovider/xelon/**'
+      - 'cluster-autoscaler/go.mod'
+      - 'cluster-autoscaler/go.sum'
+  pull_request:
+    paths:
+      - '.github/workflows/ca-test.yaml'
+      - '.github/workflows/verify.yaml'
+      - '.github/workflows/xelon.yaml'
+      - 'builder/Dockerfile'
+      - 'cluster-autoscaler/Dockerfile'
+      - 'cluster-autoscaler/cloudprovider/builder/builder_all.go'
+      - 'cluster-autoscaler/cloudprovider/builder/builder_xelon.go'
+      - 'cluster-autoscaler/cloudprovider/cloud_provider.go'
+      - 'cluster-autoscaler/cloudprovider/xelon/**'
+      - 'cluster-autoscaler/go.mod'
+      - 'cluster-autoscaler/go.sum'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: validate
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cluster-autoscaler
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Go
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
+        with:
+          go-version: '1.26'
+          cache-dependency-path: cluster-autoscaler/go.sum
+
+      - name: Test Xelon provider
+        run: go test -tags xelon ./cloudprovider/xelon/...
+
+      - name: Race test Xelon provider
+        run: go test -race -tags xelon ./cloudprovider/xelon/...
+
+      - name: Vet Xelon provider
+        run: go vet -tags xelon ./cloudprovider/xelon/...
+
+      - name: Build Xelon binary
+        run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags xelon -o "${RUNNER_TEMP}/cluster-autoscaler-xelon" .
+
+      - name: Validate deployment manifest schema
+        run: go run github.com/yannh/kubeconform/cmd/kubeconform@v0.7.0 -strict -summary -kubernetes-version 1.35.0 cloudprovider/xelon/examples/cluster-autoscaler.yaml
+
+      - name: Build Xelon image
+        run: docker build --file cloudprovider/xelon/Dockerfile --build-arg XELON_REVISION="${GITHUB_SHA}" --tag cluster-autoscaler-xelon:ci .
