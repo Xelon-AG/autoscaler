@@ -140,7 +140,7 @@ spec:
       containers:
         - name: cluster-autoscaler
           # Published release image tags are immutable and match Git release tags.
-          image: xelonag/cluster-autoscaler-xelon:v1.35.2-xelon.2
+          image: xelonag/cluster-autoscaler-xelon:v1.36.1-xelon.0
           imagePullPolicy: IfNotPresent
           args:
             - --cloud-provider=xelon

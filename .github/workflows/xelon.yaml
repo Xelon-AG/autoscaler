@@ -60,7 +60,7 @@ jobs:
         run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags xelon -o "${RUNNER_TEMP}/cluster-autoscaler-xelon" .
 
       - name: Validate deployment manifest schema
-        run: go run github.com/yannh/kubeconform/cmd/kubeconform@v0.7.0 -strict -summary -kubernetes-version 1.35.0 cloudprovider/xelon/examples/cluster-autoscaler.yaml
+        run: go run github.com/yannh/kubeconform/cmd/kubeconform@v0.7.0 -strict -summary -kubernetes-version 1.36.0 cloudprovider/xelon/examples/cluster-autoscaler.yaml
 
       - name: Build Xelon image
         run: docker build --file cloudprovider/xelon/Dockerfile --build-arg XELON_REVISION="${GITHUB_SHA}" --tag cluster-autoscaler-xelon:ci .
