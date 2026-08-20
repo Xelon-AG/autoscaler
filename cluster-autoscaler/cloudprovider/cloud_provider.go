@@ -94,7 +94,7 @@ const (
 	RancherProviderName = "rancher"
 	// UthoProviderName gets the provider name of utho
 	UthoProviderName = "utho"
-	// XelonProviderName gets the provider name of Xelon
+	// XelonProviderName gets the provider name of Xelon.
 	XelonProviderName = "xelon"
 )
 
@@ -263,6 +263,18 @@ type NodeGroup interface {
 	GetOptions(defaults config.NodeGroupAutoscalingOptions) (*config.NodeGroupAutoscalingOptions, error)
 }
 
+// NodeGroupWithProviderConfirmedUpcomingNodes is an optional extension for node
+// groups that can identify actively creating capacity from authoritative
+// provider state. The returned count must not be inferred solely from a target
+// size gap.
+type NodeGroupWithProviderConfirmedUpcomingNodes interface {
+	NodeGroup
+
+	// ProviderConfirmedUpcomingNodes returns the number of nodes whose creation
+	// has been accepted and is still in progress according to the provider.
+	ProviderConfirmedUpcomingNodes() (int, error)
+}
+
 // Instance represents a cloud-provider node. The node does not necessarily map to k8s node
 // i.e it does not have to be registered in k8s cluster despite being returned by NodeGroup.Nodes()
 // method. Also it is sane to have Instance object for nodes which are being created or deleted.
@@ -372,7 +384,7 @@ func ContainsCustomResources(resources []string) bool {
 	return false
 }
 
-// NodeGroupListToMapById returns a map of node group ID to nonode group
+// NodeGroupListToMapById returns a map of node group ID to node group
 func NodeGroupListToMapById(nodeGroups []NodeGroup) map[string]NodeGroup {
 	result := make(map[string]NodeGroup)
 	for _, nodeGroup := range nodeGroups {

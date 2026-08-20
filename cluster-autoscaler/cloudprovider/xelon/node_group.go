@@ -23,14 +23,18 @@ import (
 	"sync"
 	"time"
 
-	xelonsdk "github.com/Xelon-AG/xelon-sdk-go/xelon"
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/autoscaler/cluster-autoscaler/cloudprovider"
 	"k8s.io/autoscaler/cluster-autoscaler/config"
 	"k8s.io/autoscaler/cluster-autoscaler/simulator/framework"
+
+	xelonsdk "github.com/Xelon-AG/xelon-sdk-go/xelon"
 )
 
-var _ cloudprovider.NodeGroup = (*NodeGroup)(nil)
+var (
+	_ cloudprovider.NodeGroup                                   = (*NodeGroup)(nil)
+	_ cloudprovider.NodeGroupWithProviderConfirmedUpcomingNodes = (*NodeGroup)(nil)
+)
 
 const (
 	defaultRequestTimeout        = 30 * time.Second
@@ -210,6 +214,24 @@ func (group *NodeGroup) Nodes() ([]cloudprovider.Instance, error) {
 		return nil, err
 	}
 	return snapshot.publicInstances()
+}
+
+// ProviderConfirmedUpcomingNodes returns the number of nodes whose creation
+// has been accepted and is still in progress according to the provider.
+//
+// 'Created' represents backend-confirmed in-flight capacity.
+//
+// XKS guarantees that 'Created' is transient: a worker eventually transitions
+// to 'Deployed' or to a non-capacity state. Therefore 'Created' can be used as
+// authoritative evidence of upcoming capacity across autoscaler restarts.
+//
+// Do not generalize this to an arbitrary TargetSize/registered-node gap.
+func (group *NodeGroup) ProviderConfirmedUpcomingNodes() (int, error) {
+	snapshot, err := group.fetchSnapshot(context.Background())
+	if err != nil {
+		return 0, err
+	}
+	return snapshot.publicProviderConfirmedUpcomingNodes()
 }
 
 // TemplateNodeInfo reports that scale-up from zero is unsupported.

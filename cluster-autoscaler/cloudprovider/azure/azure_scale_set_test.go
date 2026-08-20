@@ -1827,21 +1827,21 @@ func newVMObjectWithState(provisioningState string, powerState string) *armcompu
 func TestInstanceStatusFromProvisioningStateAndPowerState(t *testing.T) {
 	t.Run("fast delete enablement = false", func(t *testing.T) {
 		t.Run("provisioning state = failed, power state = starting", func(t *testing.T) {
-			status := instanceStatusFromProvisioningStateAndPowerState("1", ptr.To(string(armcompute.GalleryProvisioningStateFailed)), vmPowerStateStarting, false)
+			status := instanceStatusFromProvisioningStateAndPowerState("1", ptr.To(string(armcompute.GalleryProvisioningStateFailed)), vmPowerStateStarting, disableFastDeleteOnFailure)
 
 			assert.NotNil(t, status)
 			assert.Equal(t, cloudprovider.InstanceRunning, status.State)
 		})
 
 		t.Run("provisioning state = failed, power state = running", func(t *testing.T) {
-			status := instanceStatusFromProvisioningStateAndPowerState("1", ptr.To(string(armcompute.GalleryProvisioningStateFailed)), vmPowerStateRunning, false)
+			status := instanceStatusFromProvisioningStateAndPowerState("1", ptr.To(string(armcompute.GalleryProvisioningStateFailed)), vmPowerStateRunning, disableFastDeleteOnFailure)
 
 			assert.NotNil(t, status)
 			assert.Equal(t, cloudprovider.InstanceRunning, status.State)
 		})
 
 		t.Run("provisioning state = failed, power state = stopping", func(t *testing.T) {
-			status := instanceStatusFromProvisioningStateAndPowerState("1", ptr.To(string(armcompute.GalleryProvisioningStateFailed)), vmPowerStateStopping, false)
+			status := instanceStatusFromProvisioningStateAndPowerState("1", ptr.To(string(armcompute.GalleryProvisioningStateFailed)), vmPowerStateStopping, disableFastDeleteOnFailure)
 
 			assert.NotNil(t, status)
 			assert.Equal(t, cloudprovider.InstanceRunning, status.State)
@@ -1849,21 +1849,21 @@ func TestInstanceStatusFromProvisioningStateAndPowerState(t *testing.T) {
 
 		t.Run("provisioning state = failed, power state = stopped", func(t *testing.T) {
 
-			status := instanceStatusFromProvisioningStateAndPowerState("1", ptr.To(string(armcompute.GalleryProvisioningStateFailed)), vmPowerStateStopped, false)
+			status := instanceStatusFromProvisioningStateAndPowerState("1", ptr.To(string(armcompute.GalleryProvisioningStateFailed)), vmPowerStateStopped, disableFastDeleteOnFailure)
 
 			assert.NotNil(t, status)
 			assert.Equal(t, cloudprovider.InstanceRunning, status.State)
 		})
 
 		t.Run("provisioning state = failed, power state = deallocated", func(t *testing.T) {
-			status := instanceStatusFromProvisioningStateAndPowerState("1", ptr.To(string(armcompute.GalleryProvisioningStateFailed)), vmPowerStateDeallocated, false)
+			status := instanceStatusFromProvisioningStateAndPowerState("1", ptr.To(string(armcompute.GalleryProvisioningStateFailed)), vmPowerStateDeallocated, disableFastDeleteOnFailure)
 
 			assert.NotNil(t, status)
 			assert.Equal(t, cloudprovider.InstanceRunning, status.State)
 		})
 
 		t.Run("provisioning state = failed, power state = unknown", func(t *testing.T) {
-			status := instanceStatusFromProvisioningStateAndPowerState("1", ptr.To(string(armcompute.GalleryProvisioningStateFailed)), vmPowerStateUnknown, false)
+			status := instanceStatusFromProvisioningStateAndPowerState("1", ptr.To(string(armcompute.GalleryProvisioningStateFailed)), vmPowerStateUnknown, disableFastDeleteOnFailure)
 
 			assert.NotNil(t, status)
 			assert.Equal(t, cloudprovider.InstanceRunning, status.State)
@@ -1872,21 +1872,21 @@ func TestInstanceStatusFromProvisioningStateAndPowerState(t *testing.T) {
 
 	t.Run("fast delete enablement = true", func(t *testing.T) {
 		t.Run("provisioning state = failed, power state = starting", func(t *testing.T) {
-			status := instanceStatusFromProvisioningStateAndPowerState("1", ptr.To(string(armcompute.GalleryProvisioningStateFailed)), vmPowerStateStarting, true)
+			status := instanceStatusFromProvisioningStateAndPowerState("1", ptr.To(string(armcompute.GalleryProvisioningStateFailed)), vmPowerStateStarting, enableFastDeleteOnFailure)
 
 			assert.NotNil(t, status)
 			assert.Equal(t, cloudprovider.InstanceRunning, status.State)
 		})
 
 		t.Run("provisioning state = failed, power state = running", func(t *testing.T) {
-			status := instanceStatusFromProvisioningStateAndPowerState("1", ptr.To(string(armcompute.GalleryProvisioningStateFailed)), vmPowerStateRunning, true)
+			status := instanceStatusFromProvisioningStateAndPowerState("1", ptr.To(string(armcompute.GalleryProvisioningStateFailed)), vmPowerStateRunning, enableFastDeleteOnFailure)
 
 			assert.NotNil(t, status)
 			assert.Equal(t, cloudprovider.InstanceRunning, status.State)
 		})
 
 		t.Run("provisioning state = failed, power state = stopping", func(t *testing.T) {
-			status := instanceStatusFromProvisioningStateAndPowerState("1", ptr.To(string(armcompute.GalleryProvisioningStateFailed)), vmPowerStateStopping, true)
+			status := instanceStatusFromProvisioningStateAndPowerState("1", ptr.To(string(armcompute.GalleryProvisioningStateFailed)), vmPowerStateStopping, enableFastDeleteOnFailure)
 
 			assert.NotNil(t, status)
 			assert.Equal(t, cloudprovider.InstanceCreating, status.State)
@@ -1894,7 +1894,7 @@ func TestInstanceStatusFromProvisioningStateAndPowerState(t *testing.T) {
 		})
 
 		t.Run("provisioning state = failed, power state = stopped", func(t *testing.T) {
-			status := instanceStatusFromProvisioningStateAndPowerState("1", ptr.To(string(armcompute.GalleryProvisioningStateFailed)), vmPowerStateStopped, true)
+			status := instanceStatusFromProvisioningStateAndPowerState("1", ptr.To(string(armcompute.GalleryProvisioningStateFailed)), vmPowerStateStopped, enableFastDeleteOnFailure)
 
 			assert.NotNil(t, status)
 			assert.Equal(t, cloudprovider.InstanceCreating, status.State)
@@ -1902,7 +1902,7 @@ func TestInstanceStatusFromProvisioningStateAndPowerState(t *testing.T) {
 		})
 
 		t.Run("provisioning state = failed, power state = deallocated", func(t *testing.T) {
-			status := instanceStatusFromProvisioningStateAndPowerState("1", ptr.To(string(armcompute.GalleryProvisioningStateFailed)), vmPowerStateDeallocated, true)
+			status := instanceStatusFromProvisioningStateAndPowerState("1", ptr.To(string(armcompute.GalleryProvisioningStateFailed)), vmPowerStateDeallocated, enableFastDeleteOnFailure)
 
 			assert.NotNil(t, status)
 			assert.Equal(t, cloudprovider.InstanceCreating, status.State)
@@ -1910,13 +1910,316 @@ func TestInstanceStatusFromProvisioningStateAndPowerState(t *testing.T) {
 		})
 
 		t.Run("provisioning state = failed, power state = unknown", func(t *testing.T) {
-			status := instanceStatusFromProvisioningStateAndPowerState("1", ptr.To(string(armcompute.GalleryProvisioningStateFailed)), vmPowerStateUnknown, true)
+			status := instanceStatusFromProvisioningStateAndPowerState("1", ptr.To(string(armcompute.GalleryProvisioningStateFailed)), vmPowerStateUnknown, enableFastDeleteOnFailure)
 
 			assert.NotNil(t, status)
 			assert.Equal(t, cloudprovider.InstanceCreating, status.State)
 			assert.NotNil(t, status.ErrorInfo)
 		})
 	})
+}
+
+// testPollingHandler implements runtime.PollingHandler[T] for testing.
+// It returns the configured error on Poll() and reports done after the error is returned.
+type testPollingHandler[T any] struct {
+	err    error
+	polled bool
+}
+
+func (f *testPollingHandler[T]) Done() bool {
+	return f.polled && f.err == nil
+}
+
+func (f *testPollingHandler[T]) Poll(_ context.Context) (*http.Response, error) {
+	f.polled = true
+	return &http.Response{StatusCode: http.StatusOK, Header: http.Header{}, Body: http.NoBody}, f.err
+}
+
+func (f *testPollingHandler[T]) Result(_ context.Context, _ *T) error {
+	return f.err
+}
+
+// newTestPollerWithError creates a runtime.Poller that returns the given error on PollUntilDone.
+func newTestPollerWithError(err error) *runtime.Poller[armcompute.VirtualMachineScaleSetsClientDeleteInstancesResponse] {
+	resp := &http.Response{
+		StatusCode: http.StatusAccepted,
+		Header:     http.Header{},
+		Body:       http.NoBody,
+	}
+	pl := runtime.NewPipeline("test", "v0.0.0", runtime.PipelineOptions{}, nil)
+	poller, pollerErr := runtime.NewPoller[armcompute.VirtualMachineScaleSetsClientDeleteInstancesResponse](resp, pl, &runtime.NewPollerOptions[armcompute.VirtualMachineScaleSetsClientDeleteInstancesResponse]{
+		Handler: &testPollingHandler[armcompute.VirtualMachineScaleSetsClientDeleteInstancesResponse]{err: err},
+	})
+	if pollerErr != nil {
+		panic(pollerErr)
+	}
+	return poller
+}
+
+func TestWaitForDeleteInstancesWithOperationPreemptedRetry(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	manager := newTestAzureManager(t)
+
+	vmssName := "test-asg"
+	var vmssCapacity int64 = 3
+	orchMode := armcompute.OrchestrationModeUniform
+
+	expectedScaleSets := []*armcompute.VirtualMachineScaleSet{
+		{
+			Name: &vmssName,
+			SKU: &armcompute.SKU{
+				Capacity: &vmssCapacity,
+			},
+			Properties: &armcompute.VirtualMachineScaleSetProperties{
+				OrchestrationMode: &orchMode,
+			},
+		},
+	}
+	expectedVMSSVMs := newTestVMSSVMList(3)
+
+	mockVMSSClient := mock_virtualmachinescalesetclient.NewMockInterface(ctrl)
+	mockVMSSClient.EXPECT().List(gomock.Any(), manager.config.ResourceGroup).Return(expectedScaleSets, nil).AnyTimes()
+	manager.azClient.virtualMachineScaleSetsClient = mockVMSSClient
+
+	mockVMSSVMClient := mock_virtualmachinescalesetvmclient.NewMockInterface(ctrl)
+	mockVMSSVMClient.EXPECT().ListVMInstanceView(gomock.Any(), manager.config.ResourceGroup, "test-asg").Return(expectedVMSSVMs, nil).AnyTimes()
+	manager.azClient.virtualMachineScaleSetVMsClient = mockVMSSVMClient
+
+	// Override the default delete client mock: expect exactly 1 retry call to BeginDeleteInstances
+	mockDeleteClient := NewMockVMSSDeleteClient(ctrl)
+	mockDeleteClient.EXPECT().BeginDeleteInstances(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).Times(1)
+	manager.azClient.vmssClientForDelete = mockDeleteClient
+
+	err := manager.forceRefresh()
+	assert.NoError(t, err)
+
+	registered := manager.RegisterNodeGroup(newTestScaleSet(manager, "test-asg"))
+	manager.explicitlyConfigured["test-asg"] = true
+	assert.True(t, registered)
+	err = manager.forceRefresh()
+	assert.NoError(t, err)
+
+	requiredIds := &armcompute.VirtualMachineScaleSetVMInstanceRequiredIDs{
+		InstanceIDs: []*string{ptr.To("0")},
+	}
+
+	scaleSet := newTestScaleSet(manager, "test-asg")
+
+	// lastInstanceRefresh starts at zero value for a new ScaleSet
+	assert.True(t, scaleSet.lastInstanceRefresh.IsZero())
+
+	// Create a poller that returns an OperationPreempted error on PollUntilDone
+	preemptedPoller := newTestPollerWithError(&azcore.ResponseError{ErrorCode: "OperationPreempted"})
+
+	// Act: the initial PollUntilDone fails with OperationPreempted, triggering a retry.
+	// The retry calls deleteInstances which returns (nil, nil) from the mock — retryPoller is nil,
+	// so retryErr stays nil, which counts as success. The function should invalidate cache and return.
+	scaleSet.waitForDeleteInstances(preemptedPoller, requiredIds)
+
+	// Assert: BeginDeleteInstances was called exactly once (the retry). gomock.Times(1) enforces this.
+	// Assert: instance cache was invalidated (lastInstanceRefresh changed from zero)
+	assert.False(t, scaleSet.lastInstanceRefresh.IsZero(),
+		"expected instance cache to be invalidated after preempted retry success")
+}
+
+func TestWaitForDeleteInstancesNoRetryOnOtherErrors(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	manager := newTestAzureManager(t)
+
+	vmssName := "test-asg"
+	var vmssCapacity int64 = 3
+	orchMode := armcompute.OrchestrationModeUniform
+
+	expectedScaleSets := []*armcompute.VirtualMachineScaleSet{
+		{
+			Name: &vmssName,
+			SKU: &armcompute.SKU{
+				Capacity: &vmssCapacity,
+			},
+			Properties: &armcompute.VirtualMachineScaleSetProperties{
+				OrchestrationMode: &orchMode,
+			},
+		},
+	}
+	expectedVMSSVMs := newTestVMSSVMList(3)
+
+	mockVMSSClient := mock_virtualmachinescalesetclient.NewMockInterface(ctrl)
+	mockVMSSClient.EXPECT().List(gomock.Any(), manager.config.ResourceGroup).Return(expectedScaleSets, nil).AnyTimes()
+	manager.azClient.virtualMachineScaleSetsClient = mockVMSSClient
+
+	mockVMSSVMClient := mock_virtualmachinescalesetvmclient.NewMockInterface(ctrl)
+	mockVMSSVMClient.EXPECT().ListVMInstanceView(gomock.Any(), manager.config.ResourceGroup, "test-asg").Return(expectedVMSSVMs, nil).AnyTimes()
+	manager.azClient.virtualMachineScaleSetVMsClient = mockVMSSVMClient
+
+	// Override the default delete client mock: expect exactly 0 calls to BeginDeleteInstances.
+	// If the retry path is accidentally triggered, gomock will fail the test.
+	mockDeleteClient := NewMockVMSSDeleteClient(ctrl)
+	mockDeleteClient.EXPECT().BeginDeleteInstances(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+	manager.azClient.vmssClientForDelete = mockDeleteClient
+
+	err := manager.forceRefresh()
+	assert.NoError(t, err)
+
+	registered := manager.RegisterNodeGroup(newTestScaleSet(manager, "test-asg"))
+	manager.explicitlyConfigured["test-asg"] = true
+	assert.True(t, registered)
+	err = manager.forceRefresh()
+	assert.NoError(t, err)
+
+	requiredIds := &armcompute.VirtualMachineScaleSetVMInstanceRequiredIDs{
+		InstanceIDs: []*string{ptr.To("0")},
+	}
+
+	for _, strictCacheUpdates := range []bool{false, true} {
+		t.Run(fmt.Sprintf("strict cache updates %t", strictCacheUpdates), func(t *testing.T) {
+			manager.config.StrictCacheUpdates = strictCacheUpdates
+			scaleSet := newTestScaleSet(manager, "test-asg")
+			scaleSet.curSize = 1
+			scaleSet.lastSizeRefresh = time.Now()
+			scaleSet.sizeRefreshPeriod = time.Hour
+
+			// Create a poller that returns a non-preempted error
+			otherErrorPoller := newTestPollerWithError(errors.New("InternalServerError: something went wrong"))
+
+			// Act: PollUntilDone fails with a non-preempted error — should NOT trigger retry
+			scaleSet.waitForDeleteInstances(otherErrorPoller, requiredIds)
+
+			// Assert: BeginDeleteInstances was never called. gomock.Times(0) enforces this.
+			// Assert: caches were invalidated so TargetSize refreshes from VMSS capacity.
+			assert.False(t, scaleSet.lastInstanceRefresh.IsZero())
+			targetSize, err := scaleSet.TargetSize()
+			assert.NoError(t, err)
+			assert.Equal(t, 3, targetSize)
+		})
+	}
+}
+
+func TestWaitForDeleteInstancesFailureRefreshesAzureCacheInstanceState(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	manager := newTestAzureManager(t)
+	manager.config.StrictCacheUpdates = false
+
+	vmssName := "test-asg"
+	var vmssCapacity int64 = 3
+	orchMode := armcompute.OrchestrationModeUniform
+
+	expectedScaleSets := []*armcompute.VirtualMachineScaleSet{
+		{
+			Name: &vmssName,
+			SKU: &armcompute.SKU{
+				Capacity: &vmssCapacity,
+			},
+			Properties: &armcompute.VirtualMachineScaleSetProperties{
+				OrchestrationMode: &orchMode,
+			},
+		},
+	}
+	expectedVMSSVMs := newTestVMSSVMList(3)
+
+	mockVMSSClient := mock_virtualmachinescalesetclient.NewMockInterface(ctrl)
+	mockVMSSClient.EXPECT().List(gomock.Any(), manager.config.ResourceGroup).Return(expectedScaleSets, nil).AnyTimes()
+	manager.azClient.virtualMachineScaleSetsClient = mockVMSSClient
+
+	mockVMSSVMClient := mock_virtualmachinescalesetvmclient.NewMockInterface(ctrl)
+	mockVMSSVMClient.EXPECT().ListVMInstanceView(gomock.Any(), manager.config.ResourceGroup, vmssName).Return(expectedVMSSVMs, nil).AnyTimes()
+	manager.azClient.virtualMachineScaleSetVMsClient = mockVMSSVMClient
+
+	scaleSet := newTestScaleSet(manager, vmssName)
+	registered := manager.RegisterNodeGroup(scaleSet)
+	manager.explicitlyConfigured[vmssName] = true
+	assert.True(t, registered)
+	assert.NoError(t, manager.forceRefresh())
+
+	deletedNode := newApiNode(armcompute.OrchestrationModeUniform, 0)
+	manager.azureCache.setInstanceStateByProviderID(deletedNode.Spec.ProviderID, cloudprovider.InstanceDeleting)
+
+	// Simulate stale proactive deleting state before the delete operation result is known.
+	hasInstance, err := manager.azureCache.HasInstance(deletedNode.Spec.ProviderID)
+	assert.False(t, hasInstance)
+	assert.NoError(t, err)
+
+	requiredIds := &armcompute.VirtualMachineScaleSetVMInstanceRequiredIDs{
+		InstanceIDs: []*string{ptr.To("0")},
+	}
+	otherErrorPoller := newTestPollerWithError(errors.New("InternalServerError: something went wrong"))
+
+	// A failed waiter should trigger a refresh and reconcile stale deleting state.
+	scaleSet.waitForDeleteInstances(otherErrorPoller, requiredIds)
+
+	hasInstance, err = manager.azureCache.HasInstance(deletedNode.Spec.ProviderID)
+	assert.True(t, hasInstance)
+	assert.NoError(t, err)
+}
+
+func TestWaitForDeleteInstancesRetryFailure(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	manager := newTestAzureManager(t)
+
+	vmssName := "test-asg"
+	var vmssCapacity int64 = 3
+	orchMode := armcompute.OrchestrationModeUniform
+
+	expectedScaleSets := []*armcompute.VirtualMachineScaleSet{
+		{
+			Name: &vmssName,
+			SKU: &armcompute.SKU{
+				Capacity: &vmssCapacity,
+			},
+			Properties: &armcompute.VirtualMachineScaleSetProperties{
+				OrchestrationMode: &orchMode,
+			},
+		},
+	}
+	expectedVMSSVMs := newTestVMSSVMList(3)
+
+	mockVMSSClient := mock_virtualmachinescalesetclient.NewMockInterface(ctrl)
+	mockVMSSClient.EXPECT().List(gomock.Any(), manager.config.ResourceGroup).Return(expectedScaleSets, nil).AnyTimes()
+	manager.azClient.virtualMachineScaleSetsClient = mockVMSSClient
+
+	mockVMSSVMClient := mock_virtualmachinescalesetvmclient.NewMockInterface(ctrl)
+	mockVMSSVMClient.EXPECT().ListVMInstanceView(gomock.Any(), manager.config.ResourceGroup, "test-asg").Return(expectedVMSSVMs, nil).AnyTimes()
+	manager.azClient.virtualMachineScaleSetVMsClient = mockVMSSVMClient
+
+	// Override the default delete client mock: the retry call to deleteInstances itself fails
+	mockDeleteClient := NewMockVMSSDeleteClient(ctrl)
+	mockDeleteClient.EXPECT().BeginDeleteInstances(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(nil, errors.New("ResourceGroupNotFound")).Times(1)
+	manager.azClient.vmssClientForDelete = mockDeleteClient
+
+	err := manager.forceRefresh()
+	assert.NoError(t, err)
+
+	registered := manager.RegisterNodeGroup(newTestScaleSet(manager, "test-asg"))
+	manager.explicitlyConfigured["test-asg"] = true
+	assert.True(t, registered)
+	err = manager.forceRefresh()
+	assert.NoError(t, err)
+
+	requiredIds := &armcompute.VirtualMachineScaleSetVMInstanceRequiredIDs{
+		InstanceIDs: []*string{ptr.To("0")},
+	}
+
+	scaleSet := newTestScaleSet(manager, "test-asg")
+
+	// lastInstanceRefresh starts at zero value for a new ScaleSet
+	assert.True(t, scaleSet.lastInstanceRefresh.IsZero())
+
+	// Create a poller that returns OperationPreempted
+	preemptedPoller := newTestPollerWithError(&azcore.ResponseError{ErrorCode: "OperationPreempted"})
+
+	// Act: PollUntilDone fails with OperationPreempted, retry is attempted but deleteInstances fails.
+	// Should fall through to the error path and invalidate cache.
+	scaleSet.waitForDeleteInstances(preemptedPoller, requiredIds)
+
+	// Assert: retry was attempted exactly once (gomock.Times(1) enforces this)
+	// Assert: cache was still invalidated despite failure (the !StrictCacheUpdates path)
+	assert.False(t, scaleSet.lastInstanceRefresh.IsZero(),
+		"expected instance cache to be invalidated after retry failure")
 }
 
 func TestScaleSetIncreaseSizeWithETag(t *testing.T) {
@@ -2145,109 +2448,6 @@ func TestScaleSetETagPreconditionFailureRollsBackCapacity(t *testing.T) {
 	target, err := scaleSet.TargetSize()
 	assert.NoError(t, err)
 	assert.Equal(t, 3, target)
-}
-
-type testPollingHandler[T any] struct {
-	err    error
-	polled bool
-}
-
-func (f *testPollingHandler[T]) Done() bool {
-	return f.polled && f.err == nil
-}
-
-func (f *testPollingHandler[T]) Poll(_ context.Context) (*http.Response, error) {
-	f.polled = true
-	return &http.Response{StatusCode: http.StatusOK, Header: http.Header{}, Body: http.NoBody}, f.err
-}
-
-func (f *testPollingHandler[T]) Result(_ context.Context, _ *T) error {
-	return f.err
-}
-
-func newTestPollerWithError(err error) *runtime.Poller[armcompute.VirtualMachineScaleSetsClientDeleteInstancesResponse] {
-	resp := &http.Response{
-		StatusCode: http.StatusAccepted,
-		Header:     http.Header{},
-		Body:       http.NoBody,
-	}
-	pl := runtime.NewPipeline("test", "v0.0.0", runtime.PipelineOptions{}, nil)
-	poller, pollerErr := runtime.NewPoller[armcompute.VirtualMachineScaleSetsClientDeleteInstancesResponse](resp, pl, &runtime.NewPollerOptions[armcompute.VirtualMachineScaleSetsClientDeleteInstancesResponse]{
-		Handler: &testPollingHandler[armcompute.VirtualMachineScaleSetsClientDeleteInstancesResponse]{err: err},
-	})
-	if pollerErr != nil {
-		panic(pollerErr)
-	}
-	return poller
-}
-
-func TestWaitForDeleteInstancesNoRetryOnOtherErrors(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-	manager := newTestAzureManager(t)
-
-	vmssName := "test-asg"
-	var vmssCapacity int64 = 3
-	orchMode := armcompute.OrchestrationModeUniform
-
-	expectedScaleSets := []*armcompute.VirtualMachineScaleSet{
-		{
-			Name: ptr.To(vmssName),
-			SKU:  &armcompute.SKU{Capacity: ptr.To(vmssCapacity)},
-			Properties: &armcompute.VirtualMachineScaleSetProperties{
-				OrchestrationMode: &orchMode,
-			},
-		},
-	}
-	expectedVMSSVMs := newTestVMSSVMList(3)
-
-	mockVMSSClient := mock_virtualmachinescalesetclient.NewMockInterface(ctrl)
-	mockVMSSClient.EXPECT().List(gomock.Any(), manager.config.ResourceGroup).Return(expectedScaleSets, nil).AnyTimes()
-	manager.azClient.virtualMachineScaleSetsClient = mockVMSSClient
-
-	mockVMSSVMClient := mock_virtualmachinescalesetvmclient.NewMockInterface(ctrl)
-	mockVMSSVMClient.EXPECT().ListVMInstanceView(gomock.Any(), manager.config.ResourceGroup, "test-asg").Return(expectedVMSSVMs, nil).AnyTimes()
-	manager.azClient.virtualMachineScaleSetVMsClient = mockVMSSVMClient
-
-	mockDeleteClient := NewMockVMSSDeleteClient(ctrl)
-	mockDeleteClient.EXPECT().BeginDeleteInstances(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
-	manager.azClient.vmssClientForDelete = mockDeleteClient
-
-	err := manager.forceRefresh()
-	assert.NoError(t, err)
-
-	registered := manager.RegisterNodeGroup(newTestScaleSet(manager, "test-asg"))
-	manager.explicitlyConfigured["test-asg"] = true
-	assert.True(t, registered)
-	err = manager.forceRefresh()
-	assert.NoError(t, err)
-
-	requiredIds := &armcompute.VirtualMachineScaleSetVMInstanceRequiredIDs{
-		InstanceIDs: []*string{ptr.To("0")},
-	}
-
-	for _, strictCacheUpdates := range []bool{false, true} {
-		t.Run(fmt.Sprintf("strict cache updates %t", strictCacheUpdates), func(t *testing.T) {
-			manager.config.StrictCacheUpdates = strictCacheUpdates
-			scaleSet := newTestScaleSet(manager, "test-asg")
-			scaleSet.curSize = 1
-			scaleSet.lastSizeRefresh = time.Now()
-			scaleSet.sizeRefreshPeriod = time.Hour
-
-			// Create a poller that returns a non-preempted error
-			otherErrorPoller := newTestPollerWithError(errors.New("InternalServerError: something went wrong"))
-
-			// Act: PollUntilDone fails with a non-preempted error — should NOT trigger retry
-			scaleSet.waitForDeleteInstances(otherErrorPoller, requiredIds)
-
-			// Assert: BeginDeleteInstances was never called. gomock.Times(0) enforces this.
-			// Assert: caches were invalidated so TargetSize refreshes from VMSS capacity.
-			assert.False(t, scaleSet.lastInstanceRefresh.IsZero())
-			targetSize, err := scaleSet.TargetSize()
-			assert.NoError(t, err)
-			assert.Equal(t, 3, targetSize)
-		})
-	}
 }
 
 // TestScaleSetETagRetrySucceedsAfterPreconditionFailure verifies that a single 412

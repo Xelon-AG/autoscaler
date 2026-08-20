@@ -21,6 +21,13 @@ The first demonstration is intentionally limited to `2 -> 3 -> 2`:
 Before changing the upstream baseline or preparing a release, read the
 canonical [Xelon fork maintenance guide](../../../docs/upstream-maintenance.md).
 
+### Restart safety
+
+On CA 1.36+, Xelon reports backend workers in `Created` state as
+provider-confirmed upcoming capacity. XKS guarantees `Created` is transient;
+this allows an in-flight scale-up to survive an autoscaler process restart
+without issuing a duplicate relative `IncreaseSize` request.
+
 ## Worker and identity contracts
 
 | XKS state     | Count in `TargetSize` |                 Publish through `Nodes()` |

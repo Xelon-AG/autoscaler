@@ -22,16 +22,16 @@ import (
 	"time"
 
 	apiv1 "k8s.io/api/core/v1"
+	"k8s.io/autoscaler/cluster-autoscaler/cloudprovider"
 	testprovider "k8s.io/autoscaler/cluster-autoscaler/cloudprovider/test"
 	"k8s.io/autoscaler/cluster-autoscaler/clusterstate"
+	"k8s.io/autoscaler/cluster-autoscaler/clusterstate/scaleupfailures"
 	clusterstateutils "k8s.io/autoscaler/cluster-autoscaler/clusterstate/utils"
 	"k8s.io/autoscaler/cluster-autoscaler/config"
 	"k8s.io/autoscaler/cluster-autoscaler/core"
 	coretest "k8s.io/autoscaler/cluster-autoscaler/core/test"
 	"k8s.io/autoscaler/cluster-autoscaler/estimator"
 	"k8s.io/autoscaler/cluster-autoscaler/observers/loopstart"
-	"k8s.io/autoscaler/cluster-autoscaler/processors/nodegroupconfig"
-	"k8s.io/autoscaler/cluster-autoscaler/processors/nodegroups/asyncnodegroups"
 	processorstest "k8s.io/autoscaler/cluster-autoscaler/processors/test"
 	"k8s.io/autoscaler/cluster-autoscaler/resourcequotas"
 	"k8s.io/autoscaler/cluster-autoscaler/simulator/drainability/rules"
@@ -53,27 +53,27 @@ func TestCA135RestartPreservesIdentitylessUpcomingCapacity(t *testing.T) {
 	kubernetesNodes := []*apiv1.Node{node1, node2}
 
 	provider := testprovider.NewTestCloudProviderBuilder().Build()
-	provider.AddNodeGroup("cluster/pool", 1, 10, 3)
+	nodeGroup := addProviderConfirmedNodeGroup(provider, "cluster/pool", 1, 10, 3, 1)
 	provider.AddNode("cluster/pool", node1)
 	provider.AddNode("cluster/pool", node2)
 
 	beforeRestart := newRegistry(t, provider)
-	if err := beforeRestart.UpdateNodes(kubernetesNodes, nil, now); err != nil {
+	if err := beforeRestart.UpdateNodes(kubernetesNodes, now); err != nil {
 		t.Fatal(err)
 	}
 	assertOneUpcomingAndNoSyntheticInstance(t, beforeRestart)
 
 	afterRestart := newRegistry(t, provider)
-	if err := afterRestart.UpdateNodes(kubernetesNodes, nil, now.Add(time.Second)); err != nil {
+	if err := afterRestart.UpdateNodes(kubernetesNodes, now.Add(time.Second)); err != nil {
 		t.Fatal(err)
 	}
 	assertOneUpcomingAndNoSyntheticInstance(t, afterRestart)
 
 	identityAvailable := readyNode("xelon://vm-3", "xelon://vm-3", now)
 	provider.AddNode("cluster/pool", identityAvailable)
-	provider.GetNodeGroup("cluster/pool").(*testprovider.TestNodeGroup).SetTargetSize(3)
+	nodeGroup.SetTargetSize(3)
 	afterRestart = newRegistry(t, provider)
-	if err := afterRestart.UpdateNodes(kubernetesNodes, nil, now.Add(2*time.Second)); err != nil {
+	if err := afterRestart.UpdateNodes(kubernetesNodes, now.Add(2*time.Second)); err != nil {
 		t.Fatal(err)
 	}
 	upcoming, _ := afterRestart.GetUpcomingNodes()
@@ -100,7 +100,7 @@ func TestCA135RestartDoesNotRequestFourthWorker(t *testing.T) {
 		scaleUpCalls.Add(1)
 		return nil
 	}).Build()
-	provider.AddNodeGroup("cluster/pool", 1, 10, 3)
+	nodeGroup := addProviderConfirmedNodeGroup(provider, "cluster/pool", 1, 10, 3, 1)
 	provider.AddNode("cluster/pool", node1)
 	provider.AddNode("cluster/pool", node2)
 
@@ -148,32 +148,42 @@ func TestCA135RestartDoesNotRequestFourthWorker(t *testing.T) {
 		estimator.NewThresholdBasedEstimationLimiter(nil),
 		estimator.NewDecreasingPodOrderer(),
 		nil,
+		false,
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
 	deleteOptions := options.NewNodeDeleteOptions(autoscalingOptions)
+	scaleUpFailuresRegistry := scaleupfailures.NewRegistry()
+	quotasTrackerOptions := resourcequotas.TrackerOptions{
+		QuotaProvider:            resourcequotas.NewCloudQuotasProvider(provider),
+		CustomResourcesProcessor: processors.CustomResourcesProcessor,
+	}
+	minQuotasTrackerOptions := resourcequotas.TrackerOptions{
+		QuotaProvider:            resourcequotas.NewCloudMinProvider(provider),
+		CustomResourcesProcessor: processors.CustomResourcesProcessor,
+	}
 	autoscaler := core.NewStaticAutoscaler(
 		autoscalingOptions,
 		autoscalingContext.FrameworkHandle,
 		autoscalingContext.ClusterSnapshot,
 		&autoscalingContext.AutoscalingKubeClients,
 		processors,
-		loopstart.NewObserversList(nil),
+		[]loopstart.Observer{scaleUpFailuresRegistry},
 		provider,
 		autoscalingContext.ExpanderStrategy,
 		estimatorBuilder,
 		backoff.NewIdBasedExponentialBackoff(5*time.Minute, 30*time.Minute, 3*time.Hour),
+		scaleUpFailuresRegistry,
 		autoscalingContext.DebuggingSnapshotter,
 		autoscalingContext.RemainingPdbTracker,
 		nil,
 		deleteOptions,
 		rules.Default(deleteOptions),
 		nil,
-		resourcequotas.TrackerOptions{
-			QuotaProvider:            resourcequotas.NewCloudQuotasProvider(provider),
-			CustomResourcesProcessor: processors.CustomResourcesProcessor,
-		},
+		quotasTrackerOptions,
+		minQuotasTrackerOptions,
+		nil,
 		nil,
 	)
 
@@ -184,13 +194,33 @@ func TestCA135RestartDoesNotRequestFourthWorker(t *testing.T) {
 		t.Fatalf("IncreaseSize calls=%d; want zero while one target-size-gap worker is upcoming", got)
 	}
 
-	provider.GetNodeGroup("cluster/pool").(*testprovider.TestNodeGroup).SetTargetSize(2)
+	nodeGroup.SetTargetSize(2)
 	if err := autoscaler.RunOnce(now.Add(time.Second)); err != nil {
 		t.Fatal(err)
 	}
 	if got := scaleUpCalls.Load(); got != 1 {
 		t.Fatalf("control IncreaseSize calls=%d; want one without target-size-gap capacity", got)
 	}
+}
+
+type providerConfirmedNodeGroup struct {
+	*testprovider.TestNodeGroup
+	upcoming int
+}
+
+var _ cloudprovider.NodeGroupWithProviderConfirmedUpcomingNodes = (*providerConfirmedNodeGroup)(nil)
+
+func (group *providerConfirmedNodeGroup) ProviderConfirmedUpcomingNodes() (int, error) {
+	return group.upcoming, nil
+}
+
+func addProviderConfirmedNodeGroup(provider *testprovider.TestCloudProvider, id string, minSize, maxSize, targetSize, upcoming int) *providerConfirmedNodeGroup {
+	group := &providerConfirmedNodeGroup{
+		TestNodeGroup: provider.BuildNodeGroup(id, minSize, maxSize, targetSize, true, false, "", nil),
+		upcoming:      upcoming,
+	}
+	provider.InsertNodeGroup(group)
+	return group
 }
 
 func readyNode(name, providerID string, now time.Time) *apiv1.Node {
@@ -207,13 +237,18 @@ func newRegistry(t *testing.T, provider *testprovider.TestCloudProvider) *cluste
 	if err != nil {
 		t.Fatal(err)
 	}
+	registryOptions := config.AutoscalingOptions{
+		NodeGroupDefaults: config.NodeGroupAutoscalingOptions{MaxNodeProvisionTime: 15 * time.Minute},
+	}
+	processors, templateRegistry := processorstest.NewTestProcessors(registryOptions)
 	return clusterstate.NewClusterStateRegistry(
 		provider,
-		clusterstate.ClusterStateRegistryConfig{MaxTotalUnreadyPercentage: 45, OkTotalUnreadyCount: 3},
 		recorder,
 		backoff.NewIdBasedExponentialBackoff(5*time.Minute, 30*time.Minute, 3*time.Hour),
-		nodegroupconfig.NewDefaultNodeGroupConfigProcessor(config.NodeGroupAutoscalingOptions{MaxNodeProvisionTime: 15 * time.Minute}),
-		asyncnodegroups.NewDefaultAsyncNodeGroupStateChecker(),
+		processors.NodeGroupConfigProcessor,
+		templateRegistry,
+		clusterstate.WithConfig(clusterstate.ClusterStateRegistryConfig{MaxTotalUnreadyPercentage: 45, OkTotalUnreadyCount: 3}),
+		clusterstate.WithAsyncNodeGroupStateChecker(processors.AsyncNodeGroupStateChecker),
 	)
 }
 

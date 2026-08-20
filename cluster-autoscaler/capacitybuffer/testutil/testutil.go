@@ -96,7 +96,7 @@ func GetBufferStatus(podTempRef *v1.LocalObjectRef, replicas *int32, podTemplate
 
 // GetConditionReady returns a list of conditions with a condition ready and empty message, should be used for testing purposes only
 func GetConditionReady() []metav1.Condition {
-	return GetConditionReadyWithMessage("")
+	return GetConditionReadyWithMessage("ready")
 }
 
 // GetConditionReadyWithMessage returns a list of conditions with a condition ready and the specified message
@@ -158,10 +158,28 @@ func WithPodTemplateRef(name string) BufferOption {
 	}
 }
 
+// WithScalableRef sets the Spec.ScalableRef
+func WithScalableRef(apiGroup, kind, name string) BufferOption {
+	return func(b *v1.CapacityBuffer) {
+		b.Spec.ScalableRef = &v1.ScalableRef{
+			APIGroup: apiGroup,
+			Kind:     kind,
+			Name:     name,
+		}
+	}
+}
+
 // WithReplicas sets the Spec.Replicas
 func WithReplicas(replicas int32) BufferOption {
 	return func(b *v1.CapacityBuffer) {
 		b.Spec.Replicas = &replicas
+	}
+}
+
+// WithPercentage sets the Spec.Percentage
+func WithPercentage(percentage int32) BufferOption {
+	return func(b *v1.CapacityBuffer) {
+		b.Spec.Percentage = &percentage
 	}
 }
 
@@ -183,6 +201,13 @@ func WithStatusPodTemplateRef(name string) BufferOption {
 func WithStatusReplicas(replicas int32) BufferOption {
 	return func(b *v1.CapacityBuffer) {
 		b.Status.Replicas = &replicas
+	}
+}
+
+// WithStatusPodTemplateGeneration sets the Status.PodTemplateGeneration
+func WithStatusPodTemplateGeneration(generation int64) BufferOption {
+	return func(b *v1.CapacityBuffer) {
+		b.Status.PodTemplateGeneration = &generation
 	}
 }
 
@@ -208,7 +233,8 @@ func NewPodTemplate(opts ...PodTemplateOption) *corev1.PodTemplate {
 			Spec: corev1.PodSpec{
 				Containers: []corev1.Container{
 					{
-						Name: "container",
+						Name:  "container",
+						Image: "image",
 					},
 				},
 			},
@@ -231,7 +257,7 @@ func WithPodTemplateName(name string) PodTemplateOption {
 func WithPodTemplateResources(requests, limits corev1.ResourceList) PodTemplateOption {
 	return func(pt *corev1.PodTemplate) {
 		if len(pt.Template.Spec.Containers) == 0 {
-			pt.Template.Spec.Containers = append(pt.Template.Spec.Containers, corev1.Container{Name: "container"})
+			pt.Template.Spec.Containers = append(pt.Template.Spec.Containers, corev1.Container{Name: "container", Image: "image"})
 		}
 		pt.Template.Spec.Containers[0].Resources.Requests = requests
 		pt.Template.Spec.Containers[0].Resources.Limits = limits
@@ -302,5 +328,12 @@ func WithResourceQuotaScopes(scopes []corev1.ResourceQuotaScope) ResourceQuotaOp
 func WithResourceQuotaScopeSelector(selector *corev1.ScopeSelector) ResourceQuotaOption {
 	return func(rq *corev1.ResourceQuota) {
 		rq.Spec.ScopeSelector = selector
+	}
+}
+
+// WithNamespace is a generic functional option that sets the namespace for any kubernetes resource.
+func WithNamespace[T metav1.Object](namespace string) func(T) {
+	return func(obj T) {
+		obj.SetNamespace(namespace)
 	}
 }

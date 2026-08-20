@@ -24,16 +24,35 @@ import (
 	"net/http"
 	"os"
 
-	xelonsdk "github.com/Xelon-AG/xelon-sdk-go/xelon"
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/autoscaler/cluster-autoscaler/cloudprovider"
+	"k8s.io/autoscaler/cluster-autoscaler/cloudprovider/builder"
 	"k8s.io/autoscaler/cluster-autoscaler/config/dynamic"
 	coreoptions "k8s.io/autoscaler/cluster-autoscaler/core/options"
 	caerrors "k8s.io/autoscaler/cluster-autoscaler/utils/errors"
 	"k8s.io/autoscaler/cluster-autoscaler/version"
+	"k8s.io/client-go/informers"
 	"k8s.io/klog/v2"
+
+	xelonsdk "github.com/Xelon-AG/xelon-sdk-go/xelon"
 )
+
+func init() {
+	builder.RegisterCloudProvider(
+		cloudprovider.XelonProviderName,
+		func(
+			opts *coreoptions.AutoscalerOptions,
+			discovery cloudprovider.NodeGroupDiscoveryOptions,
+			limiter *cloudprovider.ResourceLimiter,
+			_ informers.SharedInformerFactory,
+		) cloudprovider.CloudProvider {
+			return BuildXelon(opts, discovery, limiter)
+		},
+	)
+
+	builder.SetDefaultCloudProvider(cloudprovider.XelonProviderName)
+}
 
 var _ cloudprovider.CloudProvider = (*xelonCloudProvider)(nil)
 

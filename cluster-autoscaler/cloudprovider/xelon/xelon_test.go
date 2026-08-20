@@ -28,10 +28,11 @@ import (
 	"testing"
 	"time"
 
-	xelonsdk "github.com/Xelon-AG/xelon-sdk-go/xelon"
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/autoscaler/cluster-autoscaler/cloudprovider"
+
+	xelonsdk "github.com/Xelon-AG/xelon-sdk-go/xelon"
 )
 
 func TestSnapshotStateModel(t *testing.T) {
@@ -39,6 +40,7 @@ func TestSnapshotStateModel(t *testing.T) {
 		name          string
 		workers       []xelonsdk.KubernetesClusterNode
 		wantTarget    int
+		wantUpcoming  int
 		wantInstances []string
 		wantError     string
 	}{
@@ -49,6 +51,7 @@ func TestSnapshotStateModel(t *testing.T) {
 				{ID: "deployed", LocalVMID: "vm-deployed", Status: workerStateDeployed},
 			},
 			wantTarget:    2,
+			wantUpcoming:  1,
 			wantInstances: []string{"xelon://vm-deployed"},
 		},
 		{
@@ -57,7 +60,17 @@ func TestSnapshotStateModel(t *testing.T) {
 				{ID: "created", LocalVMID: "vm-created", Status: workerStateCreated},
 			},
 			wantTarget:    1,
+			wantUpcoming:  1,
 			wantInstances: []string{"xelon://vm-created"},
+		},
+		{
+			name: "deployed workers do not imply upcoming capacity",
+			workers: []xelonsdk.KubernetesClusterNode{
+				{ID: "deployed", LocalVMID: "vm-deployed", Status: workerStateDeployed},
+			},
+			wantTarget:    1,
+			wantUpcoming:  0,
+			wantInstances: []string{"xelon://vm-deployed"},
 		},
 		{
 			name:      "deployed without LocalVMID fails closed",
@@ -84,18 +97,22 @@ func TestSnapshotStateModel(t *testing.T) {
 			}
 			target, targetErr := snapshot.publicTargetSize()
 			instances, instancesErr := snapshot.publicInstances()
+			upcoming, upcomingErr := snapshot.publicProviderConfirmedUpcomingNodes()
 			if test.wantError != "" {
-				joined := errors.Join(targetErr, instancesErr)
+				joined := errors.Join(targetErr, instancesErr, upcomingErr)
 				if joined == nil || !strings.Contains(joined.Error(), test.wantError) {
 					t.Fatalf("snapshot errors=%v; want %q", joined, test.wantError)
 				}
 				return
 			}
-			if targetErr != nil || instancesErr != nil {
-				t.Fatalf("snapshot errors: target=%v instances=%v", targetErr, instancesErr)
+			if targetErr != nil || instancesErr != nil || upcomingErr != nil {
+				t.Fatalf("snapshot errors: target=%v instances=%v upcoming=%v", targetErr, instancesErr, upcomingErr)
 			}
 			if target != test.wantTarget {
 				t.Fatalf("TargetSize=%d; want %d", target, test.wantTarget)
+			}
+			if upcoming != test.wantUpcoming {
+				t.Fatalf("ProviderConfirmedUpcomingNodes=%d; want %d", upcoming, test.wantUpcoming)
 			}
 			ids := make([]string, 0, len(instances))
 			for _, instance := range instances {

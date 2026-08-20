@@ -23,8 +23,9 @@ import (
 	"strings"
 	"unicode"
 
-	xelonsdk "github.com/Xelon-AG/xelon-sdk-go/xelon"
 	"k8s.io/autoscaler/cluster-autoscaler/cloudprovider"
+
+	xelonsdk "github.com/Xelon-AG/xelon-sdk-go/xelon"
 )
 
 const xelonProviderIDPrefix = "xelon://"
@@ -128,6 +129,19 @@ func (snapshot *poolSnapshot) publicInstances() ([]cloudprovider.Instance, error
 		return nil, snapshot.classificationErr
 	}
 	return append([]cloudprovider.Instance(nil), snapshot.instances...), nil
+}
+
+func (snapshot *poolSnapshot) publicProviderConfirmedUpcomingNodes() (int, error) {
+	if snapshot.classificationErr != nil {
+		return 0, snapshot.classificationErr
+	}
+	upcoming := 0
+	for _, worker := range snapshot.workersByID {
+		if worker.status == workerStateCreated {
+			upcoming++
+		}
+	}
+	return upcoming, nil
 }
 
 func (snapshot *poolSnapshot) workerIDs() map[string]struct{} {
