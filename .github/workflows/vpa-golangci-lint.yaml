@@ -34,5 +34,6 @@ jobs:
       - name: golangci-lint - vertical-pod-autoscaler
         uses: golangci/golangci-lint-action@82606bf257cbaff209d206a39f5134f0cfbfd2ee # v9.2.1
         with:
+          version: v2.12.2
           args: --timeout=30m
           working-directory: ${{ env.GOPATH }}/src/k8s.io/autoscaler/vertical-pod-autoscaler
