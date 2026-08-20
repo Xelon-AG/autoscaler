@@ -206,7 +206,7 @@ func assertXelonSecretEnvironment(t *testing.T, environment []corev1.EnvVar) {
 
 func assertReleaseImage(t *testing.T, image string) {
 	t.Helper()
-	const want = "xelonag/cluster-autoscaler-xelon:v1.35.2-xelon.2"
+	const want = "xelonag/cluster-autoscaler-xelon:v1.36.1-xelon.0"
 	if image != want {
 		t.Errorf("image=%q; want release image %q", image, want)
 	}

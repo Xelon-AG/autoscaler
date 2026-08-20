@@ -1,7 +1,7 @@
 # Xelon Cluster Autoscaler v0
 
-This is a thin Xelon-only integration based on Cluster Autoscaler `1.35.2` at
-upstream commit `2d42588803c71fe9b35dcd9e3669ac6bb550ca22`. It manages exactly one
+This is a thin Xelon-only integration based on Cluster Autoscaler `1.36.1` at
+upstream commit `35e8a280425c76a4040f57ae0fa232a952c02024`. It manages exactly one
 existing XKS worker pool through `xelon-sdk-go v1.14.4` and the modern
 `KubernetesService` methods `GetNodePool`, `CreateNode`, and `DeleteNode`.
 
@@ -64,10 +64,10 @@ Run from `cluster-autoscaler/` on a committed Xelon revision:
 docker buildx build \
   --platform linux/amd64 \
   --load \
-  --build-arg XELON_VERSION=1.35.2-xelon.2 \
+  --build-arg XELON_VERSION=1.36.1-xelon.0 \
   --build-arg XELON_REVISION="$(git rev-parse HEAD)" \
   --file cloudprovider/xelon/Dockerfile \
-  --tag xelonag/cluster-autoscaler-xelon:v1.35.2-xelon.2 \
+  --tag xelonag/cluster-autoscaler-xelon:v1.36.1-xelon.0 \
   .
 ```
 
@@ -78,11 +78,11 @@ Verify the release, upstream CA version, and both source revisions:
 ```bash
 docker image inspect \
   --format '{{ index .Config.Labels "org.opencontainers.image.version" }} {{ index .Config.Labels "org.opencontainers.image.revision" }} {{ index .Config.Labels "io.xelon.cluster-autoscaler.upstream.version" }} {{ index .Config.Labels "io.xelon.cluster-autoscaler.upstream.revision" }}' \
-  xelonag/cluster-autoscaler-xelon:v1.35.2-xelon.2
+  xelonag/cluster-autoscaler-xelon:v1.36.1-xelon.0
 ```
 
 The expected upstream revision is
-`2d42588803c71fe9b35dcd9e3669ac6bb550ca22`.
+`35e8a280425c76a4040f57ae0fa232a952c02024`.
 
 ## Publish the image
 
@@ -108,7 +108,7 @@ different release update both the tag and digest together:
 
 ```bash
 cosign verify \
-  --certificate-identity "https://github.com/Xelon-AG/autoscaler/.github/workflows/xelon-image-publishing.yaml@refs/tags/v1.35.2-xelon.2" \
+  --certificate-identity "https://github.com/Xelon-AG/autoscaler/.github/workflows/xelon-image-publishing.yaml@refs/tags/v1.36.1-xelon.0" \
   --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
   "index.docker.io/xelonag/cluster-autoscaler-xelon@sha256:REPLACE_WITH_DIGEST"
 ```
@@ -221,7 +221,7 @@ The release manifest has the stable repository path
 After the release tag is created, pin the manifest directly with this URL:
 
 ```text
-https://raw.githubusercontent.com/Xelon-AG/autoscaler/v1.35.2-xelon.2/cluster-autoscaler/cloudprovider/xelon/examples/cluster-autoscaler.yaml
+https://raw.githubusercontent.com/Xelon-AG/autoscaler/v1.36.1-xelon.0/cluster-autoscaler/cloudprovider/xelon/examples/cluster-autoscaler.yaml
 ```
 
 For example, a Kustomize overlay can use the tagged manifest as a remote
@@ -232,7 +232,7 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  - https://raw.githubusercontent.com/Xelon-AG/autoscaler/v1.35.2-xelon.2/cluster-autoscaler/cloudprovider/xelon/examples/cluster-autoscaler.yaml
+  - https://raw.githubusercontent.com/Xelon-AG/autoscaler/v1.36.1-xelon.0/cluster-autoscaler/cloudprovider/xelon/examples/cluster-autoscaler.yaml
 ```
 
 Patch the pool argument in the overlay, or download the tagged manifest, then
@@ -241,7 +241,7 @@ replace:
 - `REPLACE_XKS_POOL_ID`.
 
 The manifest image reference uses the matching release tag
-`xelonag/cluster-autoscaler-xelon:v1.35.2-xelon.2`. Published release image tags
+`xelonag/cluster-autoscaler-xelon:v1.36.1-xelon.0`. Published release image tags
 are immutable. Using the tag avoids a circular dependency between the Git
 commit/tag and the image digest; the release workflow still reports, signs,
 and attests the resulting digest. Do not use the moving `xelon/master` branch
@@ -329,7 +329,7 @@ GOCACHE=/tmp/xelon-autoscaler-go-cache \
   ./cloudprovider/builder
 ```
 
-The integration package contains the CA 1.35.2 restart gate: target size three,
+The integration package contains the CA 1.36.1 restart gate: target size three,
 two Kubernetes/provider instances, a fresh CA state registry, one upcoming
 worker, and no duplicate `IncreaseSize` call.
 
@@ -340,11 +340,11 @@ GOCACHE=/tmp/xelon-autoscaler-go-cache \
   go test -vet=off -tags xelon ./...
 ```
 
-The `-vet=off` exception applies only to the complete upstream tree: CA 1.35.2
+The `-vet=off` exception applies only to the complete upstream tree: CA 1.36.1
 contains pre-existing format-string findings in unrelated providers and core
 packages under Go 1.26. The focused Xelon packages pass `go vet` normally and
 must not use this exception.
 
 Pinned upstream FAQ:
 
-<https://github.com/kubernetes/autoscaler/blob/cluster-autoscaler-1.35.2/cluster-autoscaler/FAQ.md>
+<https://github.com/kubernetes/autoscaler/blob/cluster-autoscaler-1.36.1/cluster-autoscaler/FAQ.md>
